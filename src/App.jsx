@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import './App.css'
 import Chatbot from './Chatbot'
 
@@ -221,7 +222,7 @@ function App() {
           </a>
           <div className="nav-links">
             <a href="#service">서비스 소개</a>
-            <a href="#process">수거 과정</a>
+            <Link to="/store">스토어</Link>
             <a href="#faq">자주 묻는 질문</a>
           </div>
           <button onClick={() => setIsModalOpen(true)} className="nav-cta">수거 신청</button>
