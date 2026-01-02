@@ -28,6 +28,7 @@ import App from './App.jsx'           // 메인 페이지 (홈)
 import Statement from './Statement.jsx' // 명세서 페이지
 import Store from './Store.jsx'       // 스토어 페이지 (중고 의류 판매)
 import ProductDetail from './ProductDetail.jsx' // 상품 상세 페이지
+import Guide from './Guide.jsx'       // 수거 가이드 페이지
 
 /**
  * createRoot(): HTML에서 id가 'root'인 요소를 찾아서 React 앱의 시작점으로 설정
@@ -66,6 +67,13 @@ createRoot(document.getElementById('root')).render(
           예: localhost:5173/product/1 → 1번 상품 상세 페이지
         */}
         <Route path="/product/:id" element={<ProductDetail />} />
+
+        {/*
+          /guide 경로로 접속하면 Guide 컴포넌트를 보여줌
+          수거 가능/불가 품목, 정산 기준, 포장 방법 안내 페이지
+          예: localhost:5173/guide
+        */}
+        <Route path="/guide" element={<Guide />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>,

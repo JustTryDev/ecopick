@@ -84,12 +84,48 @@ function App() {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [phone, setPhone] = useState('')
-  const [clothesAmount, setClothesAmount] = useState('')
   const [preferredDate, setPreferredDate] = useState('')
   const [preferredTime, setPreferredTime] = useState('')
   const [entrancePassword, setEntrancePassword] = useState('')
   const [vehicleRegistration, setVehicleRegistration] = useState('')
   const addressLayerRef = useRef(null)
+
+  // 계산기 상태
+  const [clothesKg, setClothesKg] = useState(0)
+  const [shoesKg, setShoesKg] = useState(0)
+  const [bagsKg, setBagsKg] = useState(0)
+
+  // 지역 검증 상태
+  const [regionStatus, setRegionStatus] = useState(null) // 'available' | 'unavailable' | null
+
+  // 가능 지역 목록
+  const availableRegions = [
+    '부천', '안산', '오류동', '개봉동', '고척동', '항동', '궁동', '수궁동',
+    '부개동', '삼산동', '은계'
+  ]
+  const excludedRegions = ['거북섬', '대부도']
+
+  // 지역 검증 함수
+  const checkRegion = (addr) => {
+    if (!addr) {
+      setRegionStatus(null)
+      return
+    }
+    // 제외 지역 체크
+    const isExcluded = excludedRegions.some(region => addr.includes(region))
+    if (isExcluded) {
+      setRegionStatus('unavailable')
+      return
+    }
+    // 가능 지역 체크
+    const isAvailable = availableRegions.some(region => addr.includes(region))
+    setRegionStatus(isAvailable ? 'available' : 'unavailable')
+  }
+
+  // 예상 정산 금액 계산
+  const totalKg = clothesKg + shoesKg + bagsKg
+  const estimatedPrice = (clothesKg * 350) + (shoesKg * 400) + (bagsKg * 700)
+  const isMinimumMet = totalKg >= 20
 
   const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwe0kebW-bhj-VksubN6YZ2oc14UFNb5a82yxr_RV6QyUCZ2jBd6tYErbpPDXXFPkfv/exec'
 
@@ -102,7 +138,11 @@ function App() {
       address,
       addressDetail,
       phone,
-      clothesAmount,
+      clothesKg: `${clothesKg}KG`,
+      shoesKg: `${shoesKg}KG`,
+      bagsKg: `${bagsKg}KG`,
+      totalKg: `${totalKg}KG`,
+      estimatedPrice: `${estimatedPrice.toLocaleString()}원`,
       preferredDate,
       preferredTime,
       entrancePassword,
@@ -134,11 +174,14 @@ function App() {
     setAddressDetail('')
     setPickupType('')
     setPhone('')
-    setClothesAmount('')
     setPreferredDate('')
     setPreferredTime('')
     setEntrancePassword('')
     setVehicleRegistration('')
+    setClothesKg(0)
+    setShoesKg(0)
+    setBagsKg(0)
+    setRegionStatus(null)
   }
 
   const openAddressSearch = () => {
@@ -160,6 +203,7 @@ function App() {
           }
 
           setAddress(fullAddress)
+          checkRegion(fullAddress)
           setIsAddressOpen(false)
         },
         onclose: function() {
@@ -193,22 +237,143 @@ function App() {
   const heroAnim = useScrollAnimation()
   const serviceAnim = useScrollAnimation()
   const processAnim = useScrollAnimation()
+  const environmentAnim = useScrollAnimation()
+  const reviewAnim = useScrollAnimation()
   const faqAnim = useScrollAnimation()
 
+  // FAQ 카테고리, 검색, 페이지네이션 상태
+  const [faqCategory, setFaqCategory] = useState('all')
+  const [faqSearch, setFaqSearch] = useState('')
+  const [faqPage, setFaqPage] = useState(1)
+  const faqPerPage = 5
+
+  const faqCategories = [
+    { id: 'all', name: '전체' },
+    { id: 'reservation', name: '예약/상담' },
+    { id: 'region', name: '수거 지역/기준' },
+    { id: 'possible', name: '수거 가능 품목' },
+    { id: 'impossible', name: '수거 불가 품목' }
+  ]
+
   const faqs = [
+    // 예약/상담
     {
-      question: "어떤 옷이든 수거가 가능한가요?",
-      answer: "네, 상태와 관계없이 모든 의류를 수거합니다. 깨끗한 옷은 기부되고, 상태가 좋지 않은 옷은 재활용 원료로 사용됩니다."
+      category: 'reservation',
+      question: "전화 상담이 가능한가요?",
+      answer: "네, 가능합니다. 예약 문의 외 일반 전화 상담은 오전 7시부터 오후 7시까지 운영됩니다."
     },
     {
-      question: "얼마를 받을 수 있나요?",
-      answer: "의류 상태와 수량에 따라 정산 금액이 달라집니다. 옷이 많을수록 더 많은 금액을 받으실 수 있어요!"
+      category: 'reservation',
+      question: "당일 방문 수거가 가능한가요?",
+      answer: "에코픽은 예약제로 운영되며, 최소 하루 전 예약이 필요합니다."
     },
     {
-      question: "최소 수거 수량이 있나요?",
-      answer: "5벌 이상부터 수거가 가능합니다. 효율적인 수거와 환경을 위해 양해 부탁드립니다."
+      category: 'reservation',
+      question: "방문 수거 가능 시간은 어떻게 되나요?",
+      answer: "방문 수거는 오전 7시부터 오후 4시까지 가능합니다."
+    },
+    {
+      category: 'reservation',
+      question: "비대면 수거 신청이 가능한가요?",
+      answer: "네, 가능합니다. 전날 저녁에 문 앞에 놓아주시고, 사진을 찍어 전송해 주세요. 수거 후 저울로 계량한 사진을 보내드리고, 정산 금액을 계좌로 송금해 드립니다."
+    },
+    // 수거 지역/기준
+    {
+      category: 'region',
+      question: "서비스 가능 지역은 어디인가요?",
+      answer: "현재 방문 수거 가능 지역은 부천 전지역, 안산 전지역(거북섬·대부도 제외), 서울(오류동, 개봉동, 고척동, 항동, 궁동, 수궁동), 인천 부평구(부개동, 삼산동), 시흥 은계지구입니다."
+    },
+    {
+      category: 'region',
+      question: "방문 수거 신청 기준이 있나요?",
+      answer: "네, 기본 품목(헌옷, 신발, 가방) 기준 20KG 이상부터 방문 수거가 가능합니다."
+    },
+    {
+      category: 'region',
+      question: "헌옷 20KG은 대략 어느 정도의 양인가요?",
+      answer: "50L 종량제 봉투 약 4개, 또는 75L 봉투 2~3개 분량이 대략 20KG 전후입니다."
+    },
+    {
+      category: 'region',
+      question: "엘리베이터가 없는 곳도 수거가 가능한가요?",
+      answer: "네, 가능합니다. 다만 양이 많을 경우 1층에 미리 내려주시거나, 수거 시 함께 내려주셔야 합니다."
+    },
+    // 수거 가능 품목
+    {
+      category: 'possible',
+      question: "기본 수거 품목은 무엇인가요?",
+      answer: "헌옷, 신발, 가방이 기본 수거 품목입니다."
+    },
+    {
+      category: 'possible',
+      question: "모자, 스카프, 벨트 등 잡화류도 수거되나요?",
+      answer: "네, 가능합니다. 모자, 목도리, 스카프, 벨트, 선글라스, 장갑, 양말, 속옷 등 착용 가능한 모든 잡화 품목을 수거합니다."
+    },
+    {
+      category: 'possible',
+      question: "기본 품목 외에 추가로 수거 가능한 품목이 있나요?",
+      answer: "네, 기본 품목 20KG 이상일 때 함께 수거 가능합니다: 얇은 이불, 커튼, 카펫, 소형 인형(30cm 이하), 여행용 캐리어(바퀴 정상), 소형 가전류(프린터/안마기 제외), 컴퓨터 본체/노트북/모니터, 헌책, 만화책, CD, LP판, 냄비, 후라이팬, 스텐 제품, 음료수캔, 전선류"
+    },
+    {
+      category: 'possible',
+      question: "이불도 수거되나요?",
+      answer: "얇은 이불만 무상 수거 가능하며, 솜이 들어간 이불은 수거 불가합니다."
+    },
+    {
+      category: 'possible',
+      question: "인형도 수거되나요?",
+      answer: "30cm 이하 소형 인형에 한해 무상 수거 가능합니다."
+    },
+    {
+      category: 'possible',
+      question: "헌책만 수거 신청이 가능한가요?",
+      answer: "아니요, 기본 품목(헌옷, 신발, 가방)이 20KG 이상 있어야 헌책도 함께 수거 가능합니다. 헌책은 노끈으로 묶거나 라면박스 크기 박스에 포장해 주세요. 박스당 20KG 초과 시 수거 거부될 수 있으며, 엘리베이터 없는 경우 1층으로 내려주셔야 합니다."
+    },
+    // 수거 불가 품목
+    {
+      category: 'impossible',
+      question: "방문 수거가 불가한 품목은 무엇인가요?",
+      answer: "솜이불, 솜베개, 목쿠션, 라텍스, 토퍼, 바닥패드, 전기장판, 바퀴 달린 신발, 겨울 털신발, 패딩부츠, 기모신발, 곰팡이가 핀 의류/신발/가방, 심한 얼룩/찢어진 의류, 동물 털이 심하게 묻은 의류, 경화되어 가루가 떨어지는 레자 제품은 수거 불가합니다."
+    },
+    {
+      category: 'impossible',
+      question: "카시트도 수거되나요?",
+      answer: "아니요, 카시트는 수거 불가 품목입니다."
+    },
+    {
+      category: 'impossible',
+      question: "아이들 장난감도 수거되나요?",
+      answer: "아니요, 장난감은 수거 불가 품목입니다."
     }
   ]
+
+  // 필터링된 FAQ (카테고리 + 검색어)
+  const filteredFaqs = faqs.filter(faq => {
+    const matchCategory = faqCategory === 'all' || faq.category === faqCategory
+    const searchLower = faqSearch.toLowerCase().trim()
+    const matchSearch = !searchLower ||
+      faq.question.toLowerCase().includes(searchLower) ||
+      faq.answer.toLowerCase().includes(searchLower)
+    return matchCategory && matchSearch
+  })
+
+  // 페이지네이션 계산
+  const totalFaqPages = Math.ceil(filteredFaqs.length / faqPerPage)
+  const paginatedFaqs = filteredFaqs.slice((faqPage - 1) * faqPerPage, faqPage * faqPerPage)
+
+  // 카테고리 변경 시 페이지 리셋
+  const handleCategoryChange = (category) => {
+    setFaqCategory(category)
+    setFaqPage(1)
+    setOpenFaq(null)
+  }
+
+  // 검색어 변경 시 페이지 리셋
+  const handleSearchChange = (e) => {
+    setFaqSearch(e.target.value)
+    setFaqPage(1)
+    setOpenFaq(null)
+  }
 
   return (
     <>
@@ -222,7 +387,8 @@ function App() {
           <div className="nav-links">
             <a href="#service">서비스 소개</a>
             <Link to="/store">스토어</Link>
-            <a href="#faq">자주 묻는 질문</a>
+            <Link to="/guide">수거 가이드</Link>
+            <a href="#faq">FAQ</a>
           </div>
           <button onClick={() => setIsModalOpen(true)} className="nav-cta">수거 신청</button>
         </div>
@@ -369,6 +535,129 @@ function App() {
         </div>
       </section>
 
+      {/* Environment Impact Section */}
+      <section id="environment" className="environment" ref={environmentAnim.ref}>
+        <div className="container">
+          <p className={`section-label fade-up ${environmentAnim.isVisible ? 'visible' : ''}`}>환경 영향</p>
+          <h2 className={`section-title fade-up delay-1 ${environmentAnim.isVisible ? 'visible' : ''}`}>
+            에코픽과 함께한<br />
+            환경 보호 성과
+          </h2>
+          <div className="environment-grid">
+            {[
+              {
+                icon: <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4M12 16h.01"/></svg>,
+                value: '64톤',
+                label: '탄소 절감량',
+                detail: '승용차 약 27대가 1년간 배출하는 CO2와 동일'
+              },
+              {
+                icon: <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>,
+                value: '2,560만L',
+                label: '물 절약량',
+                detail: '수영장 약 10개를 채울 수 있는 양'
+              },
+              {
+                icon: <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
+                value: '127,849벌',
+                label: '수거된 의류',
+                detail: '매립되었을 옷들이 새 생명을 얻었습니다'
+              },
+              {
+                icon: <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>,
+                value: '32,451명',
+                label: '참여 고객',
+                detail: '함께 환경을 지키는 에코픽 가족'
+              }
+            ].map((item, index) => (
+              <div
+                key={index}
+                className={`environment-card fade-up delay-${index + 2} ${environmentAnim.isVisible ? 'visible' : ''}`}
+              >
+                <div className="environment-icon">{item.icon}</div>
+                <div className="environment-value">{item.value}</div>
+                <div className="environment-label">{item.label}</div>
+                <p className="environment-detail">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Review Section */}
+      <section id="review" className="review" ref={reviewAnim.ref}>
+        <div className="container">
+          <p className={`section-label fade-up ${reviewAnim.isVisible ? 'visible' : ''}`}>고객 후기</p>
+          <h2 className={`section-title fade-up delay-1 ${reviewAnim.isVisible ? 'visible' : ''}`}>
+            에코픽을 이용한<br />
+            고객님들의 이야기
+          </h2>
+          <div className="review-grid">
+            {[
+              {
+                name: '김지은',
+                location: '서울 강남구',
+                rating: 5,
+                text: '이사하면서 안 입는 옷들이 많았는데, 에코픽 덕분에 깔끔하게 정리하고 용돈까지 받았어요! 비대면이라 편하고 좋았습니다.',
+                date: '2024.12.15'
+              },
+              {
+                name: '박민수',
+                location: '경기 성남시',
+                rating: 5,
+                text: '환경도 지키고 돈도 벌 수 있어서 일석이조예요. 수거 기사님도 친절하시고, 정산도 빨라서 만족합니다.',
+                date: '2024.12.10'
+              },
+              {
+                name: '이수진',
+                location: '인천 연수구',
+                rating: 5,
+                text: '옷장에 쌓여있던 옷들 정리하니 너무 시원해요. 다음에도 또 이용할게요!',
+                date: '2024.12.08'
+              },
+              {
+                name: '최영호',
+                location: '서울 마포구',
+                rating: 4,
+                text: '아이 옷이 계속 작아져서 고민이었는데, 에코픽으로 한번에 해결했어요. 다만 주말 예약이 좀 빠듯해요.',
+                date: '2024.12.05'
+              },
+              {
+                name: '정미영',
+                location: '경기 수원시',
+                rating: 5,
+                text: '카카오톡으로 진행 상황 알려주셔서 안심이 됐어요. 정산 금액도 생각보다 많이 나왔습니다!',
+                date: '2024.11.28'
+              },
+              {
+                name: '한상우',
+                location: '서울 송파구',
+                rating: 5,
+                text: '버리기엔 아깝고 팔기엔 귀찮았던 옷들, 에코픽이 다 가져가니 속 시원해요. 환경에도 기여하는 것 같아 뿌듯합니다.',
+                date: '2024.11.25'
+              }
+            ].map((review, index) => (
+              <div
+                key={index}
+                className={`review-card fade-up delay-${(index % 3) + 2} ${reviewAnim.isVisible ? 'visible' : ''}`}
+              >
+                <div className="review-header">
+                  <div className="review-info">
+                    <span className="review-name">{review.name}</span>
+                    <span className="review-location">{review.location}</span>
+                  </div>
+                  <div className="review-rating">
+                    {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                  </div>
+                </div>
+                <p className="review-text">"{review.text}"</p>
+                <span className="review-date">{review.date}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Apply Modal */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={closeModal}>
@@ -454,6 +743,18 @@ function App() {
                   value={addressDetail}
                   onChange={(e) => setAddressDetail(e.target.value)}
                 />
+                {regionStatus === 'available' && (
+                  <div className="region-message region-available">
+                    <span className="region-icon">✓</span>
+                    수거 가능 지역입니다
+                  </div>
+                )}
+                {regionStatus === 'unavailable' && (
+                  <div className="region-message region-unavailable">
+                    <span className="region-icon">✕</span>
+                    현재 수거 불가 지역입니다 (부천, 안산, 서울 일부, 인천 부평구, 시흥 은계 지역만 가능)
+                  </div>
+                )}
               </div>
 
               {/* 연락처 */}
@@ -468,20 +769,119 @@ function App() {
                 />
               </div>
 
-              {/* 헌옷양 */}
-              <div className="form-group">
-                <label className="form-label">헌옷양</label>
-                <select
-                  className="form-input"
-                  value={clothesAmount}
-                  onChange={(e) => setClothesAmount(e.target.value)}
-                >
-                  <option value="">선택해주세요</option>
-                  <option value="소량 (5~10벌)">소량 (5~10벌)</option>
-                  <option value="중량 (11~30벌)">중량 (11~30벌)</option>
-                  <option value="대량 (31~50벌)">대량 (31~50벌)</option>
-                  <option value="대량 (50벌 이상)">대량 (50벌 이상)</option>
-                </select>
+              {/* 수거량 계산기 */}
+              <div className="form-group calculator-group">
+                <label className="form-label">수거량 계산기</label>
+                <p className="form-hint">슬라이더를 조절하거나 숫자를 직접 입력하세요 (최소 20KG 이상)</p>
+
+                {/* 헌옷 */}
+                <div className="calculator-row">
+                  <div className="calculator-label">
+                    <span className="calc-icon">👕</span>
+                    <span>헌옷</span>
+                    <span className="calc-price">350원/KG</span>
+                  </div>
+                  <div className="calculator-control">
+                    <input
+                      type="range"
+                      min="0"
+                      max="50"
+                      value={clothesKg}
+                      onChange={(e) => setClothesKg(Number(e.target.value))}
+                      className="calc-slider"
+                    />
+                    <div className="calc-input-wrap">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={clothesKg}
+                        onChange={(e) => setClothesKg(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                        className="calc-input"
+                      />
+                      <span className="calc-unit">KG</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 신발 */}
+                <div className="calculator-row">
+                  <div className="calculator-label">
+                    <span className="calc-icon">👟</span>
+                    <span>신발</span>
+                    <span className="calc-price">400원/KG</span>
+                  </div>
+                  <div className="calculator-control">
+                    <input
+                      type="range"
+                      min="0"
+                      max="20"
+                      value={shoesKg}
+                      onChange={(e) => setShoesKg(Number(e.target.value))}
+                      className="calc-slider"
+                    />
+                    <div className="calc-input-wrap">
+                      <input
+                        type="number"
+                        min="0"
+                        max="50"
+                        value={shoesKg}
+                        onChange={(e) => setShoesKg(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
+                        className="calc-input"
+                      />
+                      <span className="calc-unit">KG</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 가방 */}
+                <div className="calculator-row">
+                  <div className="calculator-label">
+                    <span className="calc-icon">👜</span>
+                    <span>가방</span>
+                    <span className="calc-price">700원/KG</span>
+                  </div>
+                  <div className="calculator-control">
+                    <input
+                      type="range"
+                      min="0"
+                      max="20"
+                      value={bagsKg}
+                      onChange={(e) => setBagsKg(Number(e.target.value))}
+                      className="calc-slider"
+                    />
+                    <div className="calc-input-wrap">
+                      <input
+                        type="number"
+                        min="0"
+                        max="50"
+                        value={bagsKg}
+                        onChange={(e) => setBagsKg(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
+                        className="calc-input"
+                      />
+                      <span className="calc-unit">KG</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 총합 및 예상 정산 */}
+                <div className="calculator-summary">
+                  <div className="summary-row">
+                    <span>총 무게</span>
+                    <span className="summary-value">{totalKg} KG</span>
+                  </div>
+                  <div className="summary-row summary-price">
+                    <span>예상 정산 금액</span>
+                    <span className="summary-value">{estimatedPrice.toLocaleString()}원</span>
+                  </div>
+                </div>
+
+                {!isMinimumMet && totalKg > 0 && (
+                  <div className="minimum-warning">
+                    <span className="warning-icon">⚠</span>
+                    최소 20KG 이상 신청 가능합니다 (현재 {totalKg}KG)
+                  </div>
+                )}
               </div>
 
               {/* 희망 날짜 및 시간 */}
@@ -500,9 +900,10 @@ function App() {
                     onChange={(e) => setPreferredTime(e.target.value)}
                   >
                     <option value="">시간대 선택</option>
-                    <option value="오전 (9:00-12:00)">오전 (9:00-12:00)</option>
-                    <option value="오후 (13:00-18:00)">오후 (13:00-18:00)</option>
-                    <option value="저녁 (18:00-21:00)">저녁 (18:00-21:00)</option>
+                    <option value="오전 (07:00-10:00)">오전 (07:00-10:00)</option>
+                    <option value="오전 (10:00-12:00)">오전 (10:00-12:00)</option>
+                    <option value="오후 (12:00-14:00)">오후 (12:00-14:00)</option>
+                    <option value="오후 (14:00-16:00)">오후 (14:00-16:00)</option>
                   </select>
                 </div>
               </div>
@@ -529,7 +930,7 @@ function App() {
               <button
                 type="submit"
                 className="btn btn-primary btn-full btn-animated"
-                disabled={isSubmitting}
+                disabled={isSubmitting || regionStatus === 'unavailable' || !isMinimumMet}
               >
                 <span>{isSubmitting ? '신청 중...' : '수거 신청하기'}</span>
                 {!isSubmitting && (
@@ -551,11 +952,56 @@ function App() {
         <div className="container">
           <p className={`section-label fade-up ${faqAnim.isVisible ? 'visible' : ''}`}>자주 묻는 질문</p>
           <h2 className={`section-title fade-up delay-1 ${faqAnim.isVisible ? 'visible' : ''}`}>궁금한 점이 있으신가요?</h2>
+
+          {/* 검색 입력 */}
+          <div className={`faq-search fade-up delay-2 ${faqAnim.isVisible ? 'visible' : ''}`}>
+            <svg className="faq-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input
+              type="text"
+              className="faq-search-input"
+              placeholder="궁금한 내용을 검색해보세요"
+              value={faqSearch}
+              onChange={handleSearchChange}
+            />
+            {faqSearch && (
+              <button className="faq-search-clear" onClick={() => { setFaqSearch(''); setFaqPage(1); setOpenFaq(null); }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* 카테고리 탭 */}
+          <div className={`faq-tabs fade-up delay-2 ${faqAnim.isVisible ? 'visible' : ''}`}>
+            {faqCategories.map((cat) => (
+              <button
+                key={cat.id}
+                className={`faq-tab ${faqCategory === cat.id ? 'active' : ''}`}
+                onClick={() => handleCategoryChange(cat.id)}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+
+          {/* 검색 결과 없음 */}
+          {filteredFaqs.length === 0 && (
+            <div className="faq-no-results">
+              <p>검색 결과가 없습니다.</p>
+              <span>다른 검색어로 시도해보세요.</span>
+            </div>
+          )}
+
           <div className="faq-list">
-            {faqs.map((faq, index) => (
+            {paginatedFaqs.map((faq, index) => (
               <div
-                key={index}
-                className={`faq-item fade-up delay-${index + 2} ${faqAnim.isVisible ? 'visible' : ''} ${openFaq === index ? 'open' : ''}`}
+                key={`${faqCategory}-${faqPage}-${index}`}
+                className={`faq-item fade-up ${faqAnim.isVisible ? 'visible' : ''} ${openFaq === index ? 'open' : ''}`}
+                style={{ animationDelay: `${index * 0.05}s` }}
               >
                 <div className="faq-question" onClick={() => toggleFaq(index)}>
                   <span>{faq.question}</span>
@@ -567,6 +1013,35 @@ function App() {
               </div>
             ))}
           </div>
+
+          {/* 페이지네이션 */}
+          {totalFaqPages > 1 && (
+            <div className={`faq-pagination fade-up ${faqAnim.isVisible ? 'visible' : ''}`}>
+              <button
+                className="faq-page-btn"
+                onClick={() => setFaqPage(prev => Math.max(prev - 1, 1))}
+                disabled={faqPage === 1}
+              >
+                ‹
+              </button>
+              {Array.from({ length: totalFaqPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  className={`faq-page-btn ${faqPage === page ? 'active' : ''}`}
+                  onClick={() => { setFaqPage(page); setOpenFaq(null); }}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                className="faq-page-btn"
+                onClick={() => setFaqPage(prev => Math.min(prev + 1, totalFaqPages))}
+                disabled={faqPage === totalFaqPages}
+              >
+                ›
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -585,6 +1060,7 @@ function App() {
               <div className="footer-column">
                 <h4>서비스</h4>
                 <button onClick={() => setIsModalOpen(true)} className="footer-link-btn">수거 신청</button>
+                <Link to="/guide">수거 가이드</Link>
                 <a href="#process">이용 방법</a>
                 <a href="#faq">자주 묻는 질문</a>
               </div>
