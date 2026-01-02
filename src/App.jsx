@@ -98,6 +98,17 @@ function App() {
   const [vehicleRegistration, setVehicleRegistration] = useState('')
   const addressLayerRef = useRef(null)
 
+  // 챗봇 메시지 상태
+  const [chatMessages, setChatMessages] = useState([
+    {
+      id: 1,
+      type: 'bot',
+      text: '안녕하세요! 에코픽입니다.\n헌옷 수거 관련 문의사항이 있으시면 편하게 연락주세요!'
+    }
+  ])
+  const [chatInput, setChatInput] = useState('')
+  const chatMessagesEndRef = useRef(null)
+
   // Before/After 슬라이더 상태
   const [sliderPosition, setSliderPosition] = useState(50)
   const sliderRef = useRef(null)
@@ -453,6 +464,38 @@ function App() {
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index)
   }
+
+  // 챗봇 메시지 전송 핸들러
+  const handleSendMessage = (e) => {
+    e.preventDefault()
+    if (!chatInput.trim()) return
+
+    // 사용자 메시지 추가
+    const userMessage = {
+      id: Date.now(),
+      type: 'user',
+      text: chatInput
+    }
+    setChatMessages(prev => [...prev, userMessage])
+    setChatInput('')
+
+    // 자동 응답 (500ms 딜레이)
+    setTimeout(() => {
+      const botResponse = {
+        id: Date.now() + 1,
+        type: 'bot',
+        text: '현재 AI 챗봇 상담 서비스는 준비 중입니다. 최대한 빠른 시일 내에 준비하겠습니다.\n\n아래 "수거 신청하기" 버튼을 눌러 바로 신청하시거나, 전화/이메일로 문의해주세요!'
+      }
+      setChatMessages(prev => [...prev, botResponse])
+    }, 500)
+  }
+
+  // 챗봇 메시지 스크롤
+  useEffect(() => {
+    if (chatMessagesEndRef.current) {
+      chatMessagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [chatMessages])
 
   // 카운터 애니메이션
   const stat1 = useCountUp(127849, 2500)
@@ -1792,7 +1835,7 @@ function App() {
             <div className="chatbot-header">
               <div className="chatbot-header-info">
                 <span className="chatbot-title">에코픽 상담</span>
-                <span className="chatbot-status">● 상담 가능</span>
+                <span className="chatbot-status">상담 가능</span>
               </div>
               <button
                 className="chatbot-close"
@@ -1803,34 +1846,33 @@ function App() {
               </button>
             </div>
             <div className="chatbot-messages">
-              <div className="chatbot-message bot">
-                <div className="message-avatar">🤖</div>
-                <div className="message-content">
-                  <p>안녕하세요! 에코픽입니다.</p>
-                  <p>헌옷 수거 관련 문의사항이 있으시면 편하게 연락주세요!</p>
+              {chatMessages.map((message) => (
+                <div key={message.id} className={`chatbot-message ${message.type}`}>
+                  {message.type === 'bot' && <div className="message-avatar">🤖</div>}
+                  <div className="message-content">
+                    <p style={{ whiteSpace: 'pre-line' }}>{message.text}</p>
+                  </div>
+                  {message.type === 'user' && <div className="message-avatar user-avatar">👤</div>}
                 </div>
-              </div>
-              <div className="chatbot-contact-options">
-                <a href="tel:010-8186-7982" className="contact-option phone">
+              ))}
+              <div ref={chatMessagesEndRef} />
+            </div>
+            <div className="chatbot-input-wrapper">
+              <form onSubmit={handleSendMessage} className="chatbot-input-form">
+                <input
+                  type="text"
+                  className="chatbot-input"
+                  placeholder="메시지를 입력하세요..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                />
+                <button type="submit" className="chatbot-send-button" disabled={!chatInput.trim()}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
                   </svg>
-                  <div className="contact-info">
-                    <span className="contact-label">전화 상담</span>
-                    <span className="contact-value">010-8186-7982</span>
-                  </div>
-                </a>
-                <a href="mailto:scissorsin@naver.com" className="contact-option email">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                    <polyline points="22,6 12,13 2,6"/>
-                  </svg>
-                  <div className="contact-info">
-                    <span className="contact-label">이메일 문의</span>
-                    <span className="contact-value">scissorsin@naver.com</span>
-                  </div>
-                </a>
-              </div>
+                </button>
+              </form>
             </div>
             <div className="chatbot-footer">
               <button
