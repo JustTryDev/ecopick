@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import './App.css'
-import Chatbot from './Chatbot'
 
 // 숫자 카운터 애니메이션 훅
 function useCountUp(end, duration = 2000, start = 0) {
@@ -612,8 +611,6 @@ function App() {
         </div>
       </footer>
 
-      {/* Chatbot */}
-      <Chatbot />
     </>
   )
 }
