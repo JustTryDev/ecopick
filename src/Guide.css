@@ -19,6 +19,45 @@
   color: #666;
 }
 
+/* Service Info Section */
+.guide-service-info {
+  padding: 40px 0;
+  background: white;
+}
+
+.service-info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.service-info-card {
+  background: #f8f9fa;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+}
+
+.service-info-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.service-info-card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #2e7d32;
+  margin-bottom: 8px;
+}
+
+.service-info-card p {
+  font-size: 0.85rem;
+  color: #555;
+  margin: 0;
+  line-height: 1.5;
+}
+
 /* Items Section */
 .guide-items {
   padding: 60px 0;
@@ -123,6 +162,15 @@
 .item-x {
   color: #d32f2f;
   font-weight: bold;
+}
+
+.item-note {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #e0e0e0;
+  font-size: 0.8rem;
+  color: #888;
+  font-style: italic;
 }
 
 /* Grade Section */
@@ -244,6 +292,70 @@
   font-size: 0.95rem;
 }
 
+.free-notice {
+  background: #e8f5e9;
+}
+
+.free-notice p {
+  color: #1b5e20;
+}
+
+/* Price Section */
+.price-section {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 32px;
+  max-width: 900px;
+  margin: 0 auto 24px;
+}
+
+.price-category {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.price-category-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #2e7d32;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e8f5e9;
+}
+
+.price-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.price-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 10px;
+}
+
+.price-icon {
+  font-size: 1.5rem;
+}
+
+.price-name {
+  flex: 1;
+  font-weight: 500;
+  color: #333;
+}
+
+.price-value {
+  font-weight: 700;
+  color: #2e7d32;
+  font-size: 1rem;
+}
+
 /* Packing Section */
 .guide-packing {
   padding: 80px 0;
@@ -329,6 +441,69 @@
   background: #f5f5f5;
 }
 
+/* Footer */
+.footer-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 24px;
+}
+
+.footer-brand .logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.footer-brand .logo-icon {
+  font-size: 1.5rem;
+}
+
+.footer-brand .logo-text {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+}
+
+.footer-slogan {
+  font-size: 14px;
+  color: rgba(255,255,255,0.6);
+  margin-top: 12px;
+}
+
+.footer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.footer-info-row {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.footer-info-row .info-label {
+  color: rgba(255,255,255,0.5);
+  min-width: 120px;
+}
+
+.footer-info-row .info-value {
+  color: rgba(255,255,255,0.8);
+}
+
+.footer-info-row .info-value a {
+  color: rgba(255,255,255,0.8);
+  text-decoration: none;
+}
+
+.footer-info-row .info-value a:hover {
+  color: white;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .items-grid {
@@ -341,6 +516,14 @@
 
   .packing-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .service-info-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .price-section {
+    grid-template-columns: 1fr;
   }
 
   .grade-header,
@@ -375,6 +558,10 @@
     grid-template-columns: 1fr;
   }
 
+  .service-info-grid {
+    grid-template-columns: 1fr;
+  }
+
   .grade-table {
     overflow-x: auto;
   }
@@ -388,5 +575,19 @@
   .guide-packing h2,
   .guide-cta h2 {
     font-size: 1.5rem;
+  }
+
+  .footer-top {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .footer-info-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .footer-info-row .info-label {
+    min-width: auto;
   }
 }

@@ -77,6 +77,7 @@ function App() {
   const [openFaq, setOpenFaq] = useState(null)
   const [scrolled, setScrolled] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
   const [address, setAddress] = useState('')
   const [addressDetail, setAddressDetail] = useState('')
   const [isAddressOpen, setIsAddressOpen] = useState(false)
@@ -84,11 +85,23 @@ function App() {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [phone, setPhone] = useState('')
+  const [phoneError, setPhoneError] = useState('')
+  const [formErrors, setFormErrors] = useState({
+    pickupType: '',
+    address: '',
+    phone: '',
+    preferredDate: ''
+  })
   const [preferredDate, setPreferredDate] = useState('')
   const [preferredTime, setPreferredTime] = useState('')
   const [entrancePassword, setEntrancePassword] = useState('')
   const [vehicleRegistration, setVehicleRegistration] = useState('')
   const addressLayerRef = useRef(null)
+
+  // Before/After 슬라이더 상태
+  const [sliderPosition, setSliderPosition] = useState(50)
+  const sliderRef = useRef(null)
+  const isDragging = useRef(false)
 
   // 계산기 상태 - 기본 품목
   const [clothesKg, setClothesKg] = useState(0)
@@ -103,6 +116,7 @@ function App() {
   const [duckdownKg, setDuckdownKg] = useState(0)        // 덕다운 이불 (kg)
   const [isAdditionalOpen, setIsAdditionalOpen] = useState(false)  // 추가 품목 펼침 상태
   const [isGuideOpen, setIsGuideOpen] = useState(false)  // 20kg 가이드 펼침 상태
+  const [isCalculatorPanelOpen, setIsCalculatorPanelOpen] = useState(false)  // 계산기 패널 펼침 상태
 
   // 지역 검증 상태
   const [regionStatus, setRegionStatus] = useState(null) // 'available' | 'unavailable' | null
@@ -147,7 +161,7 @@ function App() {
 
   // 최대값 도달 체크
   const isMaxReached = clothesKg >= 500 || shoesKg >= 500 || bagsKg >= 500 ||
-    panKg >= 500 || computerCount >= 100 || monitorCount >= 100 || phoneCount >= 100 || duckdownKg >= 100
+    panKg >= 500 || computerCount >= 100 || monitorCount >= 100 || phoneCount >= 100 || duckdownKg >= 300
 
   // 일요일 체크 함수
   const isSunday = (dateString) => {
@@ -163,16 +177,96 @@ function App() {
       return
     }
     setPreferredDate(selectedDate)
+    if (formErrors.preferredDate) {
+      setFormErrors(prev => ({ ...prev, preferredDate: '' }))
+    }
+  }
+
+  // 연락처 유효성 검증
+  const validatePhone = (value) => {
+    // 정규식: 01012345678 또는 010-1234-5678 형식 허용
+    const phoneRegex = /^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/
+
+    if (!value) {
+      setPhoneError('')
+      return false
+    }
+
+    if (!phoneRegex.test(value)) {
+      setPhoneError('올바른 연락처 형식이 아닙니다. (예: 01012345678 또는 010-1234-5678)')
+      return false
+    }
+
+    setPhoneError('')
+    return true
+  }
+
+  // 연락처 입력 핸들러
+  const handlePhoneChange = (e) => {
+    const value = e.target.value
+    setPhone(value)
+    validatePhone(value)
+    if (formErrors.phone) {
+      setFormErrors(prev => ({ ...prev, phone: '' }))
+    }
+  }
+
+  // 폼 전체 유효성 검증
+  const validateForm = () => {
+    const errors = {
+      pickupType: '',
+      address: '',
+      phone: '',
+      preferredDate: ''
+    }
+    let isValid = true
+
+    // 유형 검증
+    if (!pickupType) {
+      errors.pickupType = '수거 유형을 선택해주세요.'
+      isValid = false
+    }
+
+    // 주소 검증
+    if (!address) {
+      errors.address = '방문지 주소를 입력해주세요.'
+      isValid = false
+    }
+
+    // 연락처 검증
+    const phoneRegex = /^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/
+    if (!phone) {
+      errors.phone = '연락처를 입력해주세요.'
+      isValid = false
+    } else if (!phoneRegex.test(phone)) {
+      errors.phone = '올바른 연락처 형식이 아닙니다.'
+      isValid = false
+    }
+
+    // 희망 날짜 검증
+    if (!preferredDate) {
+      errors.preferredDate = '희망 날짜를 선택해주세요.'
+      isValid = false
+    }
+
+    setFormErrors(errors)
+    return isValid
   }
 
   const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwe0kebW-bhj-VksubN6YZ2oc14UFNb5a82yxr_RV6QyUCZ2jBd6tYErbpPDXXFPkfv/exec'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    // 폼 유효성 검증
+    if (!validateForm()) {
+      return
+    }
+
     setIsSubmitting(true)
 
     const formData = {
-      pickupType: pickupType === 'visit' ? '방문 수거' : '비대면 수거',
+      pickupType: pickupType === 'visit' ? '대면 수거' : '비대면 수거',
       address,
       addressDetail,
       phone,
@@ -220,6 +314,13 @@ function App() {
     setAddressDetail('')
     setPickupType('')
     setPhone('')
+    setPhoneError('')
+    setFormErrors({
+      pickupType: '',
+      address: '',
+      phone: '',
+      preferredDate: ''
+    })
     setPreferredDate('')
     setPreferredTime('')
     setEntrancePassword('')
@@ -234,6 +335,7 @@ function App() {
     setDuckdownKg(0)
     setIsAdditionalOpen(false)
     setIsGuideOpen(false)
+    setIsCalculatorPanelOpen(false)
     setRegionStatus(null)
   }
 
@@ -267,6 +369,77 @@ function App() {
       }).embed(addressLayerRef.current)
     }, 100)
   }
+
+  // Before/After 슬라이더 핸들러
+  const handleSliderMouseDown = () => {
+    isDragging.current = true
+  }
+
+  const handleSliderMove = (e) => {
+    if (!isDragging.current || !sliderRef.current) return
+    const rect = sliderRef.current.getBoundingClientRect()
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX
+    const position = ((clientX - rect.left) / rect.width) * 100
+    setSliderPosition(Math.max(0, Math.min(100, position)))
+  }
+
+  // Before/After 슬라이더 이벤트 리스너
+  useEffect(() => {
+    const handleMouseUp = () => { isDragging.current = false }
+    const handleMouseMove = (e) => handleSliderMove(e)
+
+    window.addEventListener('mouseup', handleMouseUp)
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('touchend', handleMouseUp)
+    window.addEventListener('touchmove', handleMouseMove)
+
+    return () => {
+      window.removeEventListener('mouseup', handleMouseUp)
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('touchend', handleMouseUp)
+      window.removeEventListener('touchmove', handleMouseMove)
+    }
+  }, [])
+
+  // 자동 슬라이더 시연 애니메이션 (페이지 로드 시 1회)
+  useEffect(() => {
+    const demonstrateSlider = async () => {
+      await new Promise(resolve => setTimeout(resolve, 1500)) // 1.5초 대기
+
+      // 50% → 25%
+      const animateToPosition = (targetPosition, duration) => {
+        return new Promise(resolve => {
+          const startPosition = sliderPosition
+          const startTime = Date.now()
+
+          const animate = () => {
+            const elapsed = Date.now() - startTime
+            const progress = Math.min(elapsed / duration, 1)
+            const easeProgress = 1 - Math.pow(1 - progress, 3) // easeOutCubic
+
+            const currentPosition = startPosition + (targetPosition - startPosition) * easeProgress
+            setSliderPosition(currentPosition)
+
+            if (progress < 1) {
+              requestAnimationFrame(animate)
+            } else {
+              resolve()
+            }
+          }
+
+          requestAnimationFrame(animate)
+        })
+      }
+
+      await animateToPosition(25, 800)  // 25%로 이동
+      await new Promise(resolve => setTimeout(resolve, 300))  // 잠깐 대기
+      await animateToPosition(75, 1200) // 75%로 이동
+      await new Promise(resolve => setTimeout(resolve, 300))  // 잠깐 대기
+      await animateToPosition(50, 800)  // 다시 50%로 복귀
+    }
+
+    demonstrateSlider()
+  }, []) // 마운트 시 1회만 실행
 
   // 스크롤 감지
   useEffect(() => {
@@ -489,21 +662,56 @@ function App() {
             </div>
           </div>
           <div className={`hero-image fade-up delay-2 ${heroAnim.isVisible ? 'visible' : ''}`}>
-            <div className="hero-image-wrapper">
+            <div
+              className="before-after-slider"
+              ref={sliderRef}
+              onMouseDown={handleSliderMouseDown}
+              onTouchStart={handleSliderMouseDown}
+            >
+              {/* After 이미지 (깨끗한 상태) - 배경 */}
               <img
-                src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=750&fit=crop&q=80"
-                alt="정리된 옷장"
-                className="hero-img hero-img-main"
+                src="https://img.kr.gcp-karroter.net/business-profile/bizPlatform/profile/100580618/1765944464723/RklMRV9LSVRfOTA5ODQ0OTY1ODY5NjEwNw==.jpeg?q=95&s=720x720&t=inside"
+                alt="수거 후 깨끗한 공간"
+                className="slider-img"
               />
-              <img
-                src="https://images.unsplash.com/photo-1567113463300-102a7eb3cb26?w=300&h=380&fit=crop&q=80"
-                alt="옷 기부"
-                className="hero-img hero-img-secondary"
-              />
-              <div className="hero-image-badge">
-                <span className="badge-icon">♻</span>
-                <span className="badge-text">친환경 수거</span>
+
+              {/* Before 이미지 (더러운 상태) - 클립 */}
+              <div
+                className="slider-before-wrap"
+                style={{ width: `${sliderPosition}%` }}
+              >
+                <img
+                  src="https://img.kr.gcp-karroter.net/business-profile/bizPlatform/profile/100580618/1765944464651/RklMRV9LSVRfNzc3ODM2NjE4NTQ2NzIyMQ==.jpeg?q=95&s=720x720&t=inside"
+                  alt="수거 전 어지러운 공간"
+                  className="slider-img slider-before"
+                />
               </div>
+
+              {/* 슬라이더 핸들 */}
+              <div
+                className="slider-handle"
+                style={{ left: `${sliderPosition}%` }}
+              >
+                <div className="handle-line"></div>
+                <div className="handle-circle">
+                  <span>&#x2194;</span>
+                </div>
+                <div className="handle-line"></div>
+              </div>
+
+              {/* 라벨 - 슬라이더 위치에 따라 동적으로 표시 */}
+              <span
+                className="slider-label slider-label-before"
+                style={{ opacity: sliderPosition > 15 ? 1 : 0 }}
+              >
+                수거 전
+              </span>
+              <span
+                className="slider-label slider-label-after"
+                style={{ opacity: sliderPosition < 85 ? 1 : 0 }}
+              >
+                수거 후
+              </span>
             </div>
           </div>
         </div>
@@ -829,6 +1037,9 @@ function App() {
                   24시간 이내에 확인 연락을 드리겠습니다.<br />
                   감사합니다.
                 </p>
+                <div className="kakao-notice">
+                  카카오톡으로 발송된 [담당 기사 배정] 버튼을 클릭해 주세요.
+                </div>
                 <button className="btn btn-primary btn-full" onClick={closeModal}>
                   확인
                 </button>
@@ -842,7 +1053,7 @@ function App() {
                 <form className="apply-form" onSubmit={handleSubmit}>
               {/* 유형 */}
               <div className="form-group">
-                <label className="form-label">유형</label>
+                <label className="form-label">유형 <span className="required">*</span></label>
                 <div className="form-radio-group">
                   <label className={`form-radio ${pickupType === 'visit' ? 'selected' : ''}`}>
                     <input
@@ -850,9 +1061,14 @@ function App() {
                       name="pickupType"
                       value="visit"
                       checked={pickupType === 'visit'}
-                      onChange={(e) => setPickupType(e.target.value)}
+                      onChange={(e) => {
+                        setPickupType(e.target.value)
+                        if (formErrors.pickupType) {
+                          setFormErrors(prev => ({ ...prev, pickupType: '' }))
+                        }
+                      }}
                     />
-                    <span className="radio-label">방문 수거</span>
+                    <span className="radio-label">대면 수거</span>
                   </label>
                   <label className={`form-radio ${pickupType === 'contactless' ? 'selected' : ''}`}>
                     <input
@@ -860,23 +1076,39 @@ function App() {
                       name="pickupType"
                       value="contactless"
                       checked={pickupType === 'contactless'}
-                      onChange={(e) => setPickupType(e.target.value)}
+                      onChange={(e) => {
+                        setPickupType(e.target.value)
+                        if (formErrors.pickupType) {
+                          setFormErrors(prev => ({ ...prev, pickupType: '' }))
+                        }
+                      }}
                     />
                     <span className="radio-label">비대면 수거</span>
                   </label>
                 </div>
+                {formErrors.pickupType && (
+                  <div className="field-error">
+                    <span className="error-icon">!</span>
+                    {formErrors.pickupType}
+                  </div>
+                )}
               </div>
 
               {/* 방문지 주소 */}
               <div className="form-group">
-                <label className="form-label">방문지 주소</label>
+                <label className="form-label">방문지 주소 <span className="required">*</span></label>
                 <div className="address-input-wrapper">
                   <input
                     type="text"
                     placeholder="주소 검색 (클릭)"
-                    className="form-input"
+                    className={`form-input ${formErrors.address && !address ? 'form-input-error' : ''}`}
                     value={address}
-                    onClick={openAddressSearch}
+                    onClick={() => {
+                      openAddressSearch()
+                      if (formErrors.address) {
+                        setFormErrors(prev => ({ ...prev, address: '' }))
+                      }
+                    }}
                     readOnly
                   />
                   {isAddressOpen && (
@@ -908,383 +1140,39 @@ function App() {
                     현재 수거 불가 지역입니다 (부천, 안산, 서울 일부, 인천 부평구, 시흥 은계 지역만 가능)
                   </div>
                 )}
+                {formErrors.address && !address && (
+                  <div className="field-error">
+                    <span className="error-icon">!</span>
+                    {formErrors.address}
+                  </div>
+                )}
               </div>
 
               {/* 연락처 */}
               <div className="form-group">
-                <label className="form-label">연락처</label>
+                <label className="form-label">연락처 <span className="required">*</span></label>
                 <input
                   type="tel"
                   placeholder="010-0000-0000"
-                  className="form-input"
+                  className={`form-input ${(phoneError || formErrors.phone) ? 'form-input-error' : ''}`}
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={handlePhoneChange}
                 />
-              </div>
-
-              {/* 수거량 계산기 */}
-              <div className="form-group calculator-group">
-                <label className="form-label">수거량 계산기</label>
-
-                {/* 20kg 가이드 */}
-                <div className="kg-guide-wrapper">
-                  <button
-                    type="button"
-                    className={`kg-guide-toggle ${isGuideOpen ? 'open' : ''}`}
-                    onClick={() => setIsGuideOpen(!isGuideOpen)}
-                  >
-                    <span className="guide-icon">💡</span>
-                    <span>20kg이 얼마나 될까요?</span>
-                    <span className={`guide-arrow ${isGuideOpen ? 'open' : ''}`}>▼</span>
-                  </button>
-                  <div className={`kg-guide-content ${isGuideOpen ? 'open' : ''}`}>
-                    <div className="guide-image-wrap">
-                      <img
-                        src="https://img.kr.gcp-karroter.net/business-profile/bizPlatform/profile/100580618/1756421405553/YmM2MWRiNzBiZmQ2YTM0ZDhlYWNlNWFkMjZjMTFkNjRmODMzYWY1MzVkMjVkYThkNDliMjU4MmU2ZGRkNWNhMl8wLmpwZWc=.jpeg?q=95&s=1440x1440&t=inside"
-                        alt="다이소 90L 재활용봉투"
-                        className="guide-image"
-                      />
-                    </div>
-                    <div className="guide-item">
-                      <span className="guide-emoji">🛍️</span>
-                      <span>다이소 90L 재활용봉투 <strong>3~4개</strong> ≈ 20kg</span>
-                    </div>
-                    <div className="guide-item">
-                      <span className="guide-emoji">📦</span>
-                      <span>김장용 비닐 <strong>3~4개</strong> ≈ 20kg</span>
-                    </div>
-                    <div className="guide-tip">
-                      무게가 정확히 안 맞아도 괜찮아요!<br/>
-                      연락 주시면 최대한 맞춰드립니다 😊
-                    </div>
-                  </div>
-                </div>
-
-                <div className="calculator-section-label">기본 수거 품목 (필수)</div>
-
-                {/* 헌옷 */}
-                <div className="calculator-row">
-                  <div className="calculator-label">
-                    <span className="calc-icon">👕</span>
-                    <span>헌옷</span>
-                    <span className="calc-price">350원/KG</span>
-                  </div>
-                  <div className="calculator-control">
-                    <input
-                      type="range"
-                      min="0"
-                      max="500"
-                      value={clothesKg}
-                      onChange={(e) => setClothesKg(Number(e.target.value))}
-                      className="calc-slider"
-                    />
-                    <div className="calc-input-wrap">
-                      <input
-                        type="number"
-                        min="0"
-                        max="500"
-                        value={clothesKg}
-                        onChange={(e) => setClothesKg(Math.max(0, Math.min(500, Number(e.target.value) || 0)))}
-                        className="calc-input"
-                      />
-                      <span className="calc-unit">KG</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 신발 */}
-                <div className="calculator-row">
-                  <div className="calculator-label">
-                    <span className="calc-icon">👟</span>
-                    <span>신발</span>
-                    <span className="calc-price">400원/KG</span>
-                  </div>
-                  <div className="calculator-control">
-                    <input
-                      type="range"
-                      min="0"
-                      max="500"
-                      value={shoesKg}
-                      onChange={(e) => setShoesKg(Number(e.target.value))}
-                      className="calc-slider"
-                    />
-                    <div className="calc-input-wrap">
-                      <input
-                        type="number"
-                        min="0"
-                        max="500"
-                        value={shoesKg}
-                        onChange={(e) => setShoesKg(Math.max(0, Math.min(500, Number(e.target.value) || 0)))}
-                        className="calc-input"
-                      />
-                      <span className="calc-unit">KG</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 가방 */}
-                <div className="calculator-row">
-                  <div className="calculator-label">
-                    <span className="calc-icon">👜</span>
-                    <span>가방</span>
-                    <span className="calc-price">700원/KG</span>
-                  </div>
-                  <div className="calculator-control">
-                    <input
-                      type="range"
-                      min="0"
-                      max="500"
-                      value={bagsKg}
-                      onChange={(e) => setBagsKg(Number(e.target.value))}
-                      className="calc-slider"
-                    />
-                    <div className="calc-input-wrap">
-                      <input
-                        type="number"
-                        min="0"
-                        max="500"
-                        value={bagsKg}
-                        onChange={(e) => setBagsKg(Math.max(0, Math.min(500, Number(e.target.value) || 0)))}
-                        className="calc-input"
-                      />
-                      <span className="calc-unit">KG</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 신발/가방 분류 안내 */}
-                <div className="sorting-notice">
-                  <span className="notice-icon">📌</span>
-                  <span>신발과 가방은 헌옷과 분리하여 따로 포장해 주세요</span>
-                </div>
-
-                {/* 추가 품목 아코디언 */}
-                <div className="additional-accordion">
-                  <div
-                    className={`additional-header ${isAdditionalOpen ? 'open' : ''}`}
-                    onClick={() => setIsAdditionalOpen(!isAdditionalOpen)}
-                  >
-                    <div className="additional-header-content">
-                      <span className="additional-title">추가 수거 품목 (선택)</span>
-                      <span className="additional-items">🍳 냄비/후라이팬 · 💻 컴퓨터 · 🖥️ 모니터 · 📱 폐휴대폰 · 🛏️ 덕다운이불</span>
-                    </div>
-                    <span className="additional-toggle">{isAdditionalOpen ? '−' : '+'}</span>
-                  </div>
-
-                  <div className={`additional-content ${isAdditionalOpen ? 'open' : ''}`}>
-                    {/* 후라이팬/냄비 */}
-                    <div className="calculator-row">
-                      <div className="calculator-label">
-                        <span className="calc-icon">🍳</span>
-                        <span>후라이팬/냄비</span>
-                        <span className="calc-price">200원/KG</span>
-                      </div>
-                      <div className="calculator-control">
-                        <input
-                          type="range"
-                          min="0"
-                          max="500"
-                          value={panKg}
-                          onChange={(e) => setPanKg(Number(e.target.value))}
-                          className="calc-slider"
-                        />
-                        <div className="calc-input-wrap">
-                          <input
-                            type="number"
-                            min="0"
-                            max="500"
-                            value={panKg}
-                            onChange={(e) => setPanKg(Math.max(0, Math.min(500, Number(e.target.value) || 0)))}
-                            className="calc-input"
-                          />
-                          <span className="calc-unit">KG</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 컴퓨터/노트북 */}
-                    <div className="calculator-row">
-                      <div className="calculator-label">
-                        <span className="calc-icon">💻</span>
-                        <span>컴퓨터/노트북</span>
-                        <span className="calc-price">3,000원/대</span>
-                      </div>
-                      <div className="calculator-control">
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={computerCount}
-                          onChange={(e) => setComputerCount(Number(e.target.value))}
-                          className="calc-slider"
-                        />
-                        <div className="calc-input-wrap">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={computerCount}
-                            onChange={(e) => setComputerCount(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                            className="calc-input"
-                          />
-                          <span className="calc-unit">대</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 모니터 */}
-                    <div className="calculator-row">
-                      <div className="calculator-label">
-                        <span className="calc-icon">🖥️</span>
-                        <span>모니터</span>
-                        <span className="calc-price">1,000원/대</span>
-                      </div>
-                      <div className="calculator-control">
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={monitorCount}
-                          onChange={(e) => setMonitorCount(Number(e.target.value))}
-                          className="calc-slider"
-                        />
-                        <div className="calc-input-wrap">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={monitorCount}
-                            onChange={(e) => setMonitorCount(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                            className="calc-input"
-                          />
-                          <span className="calc-unit">대</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 폐휴대폰 */}
-                    <div className="calculator-row">
-                      <div className="calculator-label">
-                        <span className="calc-icon">📱</span>
-                        <span>폐휴대폰</span>
-                        <span className="calc-price">500원/개</span>
-                      </div>
-                      <div className="calculator-control">
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={phoneCount}
-                          onChange={(e) => setPhoneCount(Number(e.target.value))}
-                          className="calc-slider"
-                        />
-                        <div className="calc-input-wrap">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={phoneCount}
-                            onChange={(e) => setPhoneCount(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                            className="calc-input"
-                          />
-                          <span className="calc-unit">개</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 덕다운 이불 */}
-                    <div className="calculator-row">
-                      <div className="calculator-label">
-                        <span className="calc-icon">🛏️</span>
-                        <span>덕다운 이불</span>
-                        <span className="calc-price">1,000원/KG</span>
-                      </div>
-                      <div className="calculator-control">
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={duckdownKg}
-                          onChange={(e) => setDuckdownKg(Number(e.target.value))}
-                          className="calc-slider"
-                        />
-                        <div className="calc-input-wrap">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={duckdownKg}
-                            onChange={(e) => setDuckdownKg(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                            className="calc-input"
-                          />
-                          <span className="calc-unit">KG</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 총합 및 예상 정산 */}
-                <div className="calculator-summary">
-                  <div className="summary-row">
-                    <span>기본 품목 무게</span>
-                    <span className="summary-value">{basicTotalKg} KG</span>
-                  </div>
-                  {isFreePickup ? (
-                    <div className="summary-row free-pickup-row">
-                      <span>기본 품목 정산</span>
-                      <span className="summary-value free-text">무상 수거</span>
-                    </div>
-                  ) : basicTotalKg > 20 && (
-                    <div className="summary-row">
-                      <span>기본 품목 정산</span>
-                      <span className="summary-value">{basicPrice.toLocaleString()}원</span>
-                    </div>
-                  )}
-                  {additionalPrice > 0 && (
-                    <div className="summary-row">
-                      <span>추가 품목 정산</span>
-                      <span className="summary-value">{additionalPrice.toLocaleString()}원</span>
-                    </div>
-                  )}
-                  <div className="summary-row summary-price">
-                    <span>예상 정산 금액</span>
-                    <span className="summary-value">{estimatedPrice.toLocaleString()}원</span>
-                  </div>
-                </div>
-
-                {/* 무상 수거 안내 */}
-                {isFreePickup && (
-                  <div className="free-pickup-notice">
-                    <span className="notice-icon">✓</span>
-                    기본 품목 20kg 이하 무상 수거 대상입니다
-                  </div>
-                )}
-
-                {/* 기본 품목 필수 안내 */}
-                {!isMinimumMet && (
-                  <div className="minimum-warning">
-                    <span className="warning-icon">⚠</span>
-                    기본 품목(헌옷+신발+가방)을 1kg 이상 입력해주세요
-                  </div>
-                )}
-
-                {/* 최대값 도달 안내 */}
-                {isMaxReached && (
-                  <div className="max-reached-notice">
-                    <span className="notice-icon">📞</span>
-                    대량 수거는 010-8186-7982로 연락주세요
+                {(phoneError || formErrors.phone) && (
+                  <div className="field-error">
+                    <span className="error-icon">!</span>
+                    {phoneError || formErrors.phone}
                   </div>
                 )}
               </div>
 
               {/* 희망 날짜 및 시간 */}
               <div className="form-group">
-                <label className="form-label">희망 날짜 및 시간</label>
-                <div className="form-row">
+                <label className="form-label">희망 날짜 및 시간 <span className="required">*</span></label>
+                <div className="form-row form-row-datetime">
                   <input
                     type="date"
-                    className="form-input"
+                    className={`form-input ${formErrors.preferredDate && !preferredDate ? 'form-input-error' : ''}`}
                     value={preferredDate}
                     onChange={handleDateChange}
                     onKeyDown={(e) => e.preventDefault()}
@@ -1301,8 +1189,15 @@ function App() {
                     <option value="오후 (14:00-16:00)">오후 (14:00-16:00)</option>
                   </select>
                 </div>
+                {formErrors.preferredDate && !preferredDate && (
+                  <div className="field-error">
+                    <span className="error-icon">!</span>
+                    {formErrors.preferredDate}
+                  </div>
+                )}
                 <div className="time-notice">
-                  방문 시간은 수거량과 교통 상황에 따라 변경될 수 있습니다. 비대면 수거도 가능하오니, 문 앞에 놓아주시면 최대한 빠르게 수거해드리겠습니다.
+                  당일 수거량과 교통 상황에 따라 희망 시간에 수거가 불가능할 수 있습니다.
+                  비대면 수거가 가능하오니, 문 앞에 놓아주시면 최대한 빠르게 수거해드리겠습니다.
                 </div>
               </div>
 
@@ -1323,6 +1218,378 @@ function App() {
                   value={vehicleRegistration}
                   onChange={(e) => setVehicleRegistration(e.target.value)}
                 />
+              </div>
+
+              {/* 수거량 계산기 아코디언 */}
+              <div className="calculator-accordion">
+                <div
+                  className={`calculator-accordion-header ${isCalculatorPanelOpen ? 'open' : ''}`}
+                  onClick={() => setIsCalculatorPanelOpen(!isCalculatorPanelOpen)}
+                >
+                  <div className="calculator-accordion-title">
+                    <span className="calc-accordion-icon">🧮</span>
+                    <span>예상 정산 금액 계산</span>
+                  </div>
+                  <div className="calculator-accordion-right">
+                    <span className="calc-accordion-price">{estimatedPrice.toLocaleString()}원</span>
+                    <span className="calc-accordion-toggle">{isCalculatorPanelOpen ? '−' : '+'}</span>
+                  </div>
+                </div>
+
+                <div className={`calculator-accordion-content ${isCalculatorPanelOpen ? 'open' : ''}`}>
+                  {/* 20kg 가이드 */}
+                  <div className="kg-guide-wrapper">
+                    <button
+                      type="button"
+                      className={`kg-guide-toggle ${isGuideOpen ? 'open' : ''}`}
+                      onClick={() => setIsGuideOpen(!isGuideOpen)}
+                    >
+                      <span className="guide-icon">💡</span>
+                      <span>20kg이 얼마나 될까요?</span>
+                      <span className={`guide-arrow ${isGuideOpen ? 'open' : ''}`}>▼</span>
+                    </button>
+                    <div className={`kg-guide-content ${isGuideOpen ? 'open' : ''}`}>
+                      <div className="guide-image-wrap">
+                        <img
+                          src="https://img.kr.gcp-karroter.net/business-profile/bizPlatform/profile/100580618/1756421405553/YmM2MWRiNzBiZmQ2YTM0ZDhlYWNlNWFkMjZjMTFkNjRmODMzYWY1MzVkMjVkYThkNDliMjU4MmU2ZGRkNWNhMl8wLmpwZWc=.jpeg?q=95&s=1440x1440&t=inside"
+                          alt="다이소 90L 재활용봉투"
+                          className="guide-image"
+                        />
+                      </div>
+                      <div className="guide-item">
+                        <span className="guide-emoji">🛍️</span>
+                        <span>다이소 90L 재활용봉투 <strong>3~4개</strong> ≈ 20kg</span>
+                      </div>
+                      <div className="guide-item">
+                        <span className="guide-emoji">📦</span>
+                        <span>김장용 비닐 <strong>3~4개</strong> ≈ 20kg</span>
+                      </div>
+                      <div className="guide-tip">
+                        무게가 정확히 안 맞아도 괜찮아요!<br/>
+                        연락 주시면 최대한 맞춰드립니다
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="calculator-section-label">기본 수거 품목 (필수)</div>
+
+                  {/* 헌옷 */}
+                  <div className="calculator-row">
+                    <div className="calculator-label">
+                      <span className="calc-icon">👕</span>
+                      <span>헌옷</span>
+                      <span className="calc-price">350원/KG</span>
+                    </div>
+                    <div className="calculator-control">
+                      <input
+                        type="range"
+                        min="0"
+                        max="500"
+                        value={clothesKg}
+                        onChange={(e) => setClothesKg(Number(e.target.value))}
+                        className="calc-slider"
+                      />
+                      <div className="calc-input-wrap">
+                        <input
+                          type="number"
+                          min="0"
+                          max="500"
+                          value={clothesKg}
+                          onChange={(e) => setClothesKg(Math.max(0, Math.min(500, Number(e.target.value) || 0)))}
+                          className="calc-input"
+                        />
+                        <span className="calc-unit">KG</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 신발 */}
+                  <div className="calculator-row">
+                    <div className="calculator-label">
+                      <span className="calc-icon">👟</span>
+                      <span>신발</span>
+                      <span className="calc-price">400원/KG</span>
+                    </div>
+                    <div className="calculator-control">
+                      <input
+                        type="range"
+                        min="0"
+                        max="500"
+                        value={shoesKg}
+                        onChange={(e) => setShoesKg(Number(e.target.value))}
+                        className="calc-slider"
+                      />
+                      <div className="calc-input-wrap">
+                        <input
+                          type="number"
+                          min="0"
+                          max="500"
+                          value={shoesKg}
+                          onChange={(e) => setShoesKg(Math.max(0, Math.min(500, Number(e.target.value) || 0)))}
+                          className="calc-input"
+                        />
+                        <span className="calc-unit">KG</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 가방 */}
+                  <div className="calculator-row">
+                    <div className="calculator-label">
+                      <span className="calc-icon">👜</span>
+                      <span>가방</span>
+                      <span className="calc-price">700원/KG</span>
+                    </div>
+                    <div className="calculator-control">
+                      <input
+                        type="range"
+                        min="0"
+                        max="500"
+                        value={bagsKg}
+                        onChange={(e) => setBagsKg(Number(e.target.value))}
+                        className="calc-slider"
+                      />
+                      <div className="calc-input-wrap">
+                        <input
+                          type="number"
+                          min="0"
+                          max="500"
+                          value={bagsKg}
+                          onChange={(e) => setBagsKg(Math.max(0, Math.min(500, Number(e.target.value) || 0)))}
+                          className="calc-input"
+                        />
+                        <span className="calc-unit">KG</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 신발/가방 분류 안내 */}
+                  {(shoesKg > 0 || bagsKg > 0) && (
+                    <div className="sorting-notice">
+                      <span className="notice-icon">ℹ️</span>
+                      신발 또는 가방은 별도로 분리해주셔야 합니다.
+                    </div>
+                  )}
+
+                  {/* 추가 품목 아코디언 */}
+                  <div className="additional-accordion">
+                    <div
+                      className={`additional-header ${isAdditionalOpen ? 'open' : ''}`}
+                      onClick={() => setIsAdditionalOpen(!isAdditionalOpen)}
+                    >
+                      <div className="additional-header-content">
+                        <span className="additional-title">추가 수거 품목 (선택)</span>
+                        <span className="additional-items">🍳 냄비/후라이팬 · 💻 컴퓨터 · 🖥️ 모니터 · 📱 폐휴대폰 · 🛏️ 덕다운이불</span>
+                      </div>
+                      <span className="additional-toggle">{isAdditionalOpen ? '−' : '+'}</span>
+                    </div>
+
+                    <div className={`additional-content ${isAdditionalOpen ? 'open' : ''}`}>
+                      {/* 후라이팬/냄비 */}
+                      <div className="calculator-row">
+                        <div className="calculator-label">
+                          <span className="calc-icon">🍳</span>
+                          <span>후라이팬/냄비</span>
+                          <span className="calc-price">200원/KG</span>
+                        </div>
+                        <div className="calculator-control">
+                          <input
+                            type="range"
+                            min="0"
+                            max="500"
+                            value={panKg}
+                            onChange={(e) => setPanKg(Number(e.target.value))}
+                            className="calc-slider"
+                          />
+                          <div className="calc-input-wrap">
+                            <input
+                              type="number"
+                              min="0"
+                              max="500"
+                              value={panKg}
+                              onChange={(e) => setPanKg(Math.max(0, Math.min(500, Number(e.target.value) || 0)))}
+                              className="calc-input"
+                            />
+                            <span className="calc-unit">KG</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 컴퓨터/노트북 */}
+                      <div className="calculator-row">
+                        <div className="calculator-label">
+                          <span className="calc-icon">💻</span>
+                          <span>컴퓨터/노트북</span>
+                          <span className="calc-price">3,000원/대</span>
+                        </div>
+                        <div className="calculator-control">
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={computerCount}
+                            onChange={(e) => setComputerCount(Number(e.target.value))}
+                            className="calc-slider"
+                          />
+                          <div className="calc-input-wrap">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={computerCount}
+                              onChange={(e) => setComputerCount(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                              className="calc-input"
+                            />
+                            <span className="calc-unit">대</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 모니터 */}
+                      <div className="calculator-row">
+                        <div className="calculator-label">
+                          <span className="calc-icon">🖥️</span>
+                          <span>모니터</span>
+                          <span className="calc-price">1,000원/대</span>
+                        </div>
+                        <div className="calculator-control">
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={monitorCount}
+                            onChange={(e) => setMonitorCount(Number(e.target.value))}
+                            className="calc-slider"
+                          />
+                          <div className="calc-input-wrap">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={monitorCount}
+                              onChange={(e) => setMonitorCount(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                              className="calc-input"
+                            />
+                            <span className="calc-unit">대</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 폐휴대폰 */}
+                      <div className="calculator-row">
+                        <div className="calculator-label">
+                          <span className="calc-icon">📱</span>
+                          <span>폐휴대폰</span>
+                          <span className="calc-price">500원/개</span>
+                        </div>
+                        <div className="calculator-control">
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={phoneCount}
+                            onChange={(e) => setPhoneCount(Number(e.target.value))}
+                            className="calc-slider"
+                          />
+                          <div className="calc-input-wrap">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={phoneCount}
+                              onChange={(e) => setPhoneCount(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                              className="calc-input"
+                            />
+                            <span className="calc-unit">개</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 덕다운 이불 */}
+                      <div className="calculator-row">
+                        <div className="calculator-label">
+                          <span className="calc-icon">🛏️</span>
+                          <span>덕다운 이불</span>
+                          <span className="calc-price">1,000원/KG</span>
+                        </div>
+                        <div className="calculator-control">
+                          <input
+                            type="range"
+                            min="0"
+                            max="300"
+                            value={duckdownKg}
+                            onChange={(e) => setDuckdownKg(Number(e.target.value))}
+                            className="calc-slider"
+                          />
+                          <div className="calc-input-wrap">
+                            <input
+                              type="number"
+                              min="0"
+                              max="300"
+                              value={duckdownKg}
+                              onChange={(e) => setDuckdownKg(Math.max(0, Math.min(300, Number(e.target.value) || 0)))}
+                              className="calc-input"
+                            />
+                            <span className="calc-unit">KG</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 총합 및 예상 정산 */}
+                  <div className="calculator-summary">
+                    <div className="summary-row">
+                      <span>기본 품목 무게</span>
+                      <span className="summary-value">{basicTotalKg} KG</span>
+                    </div>
+                    {isFreePickup ? (
+                      <div className="summary-row free-pickup-row">
+                        <span>기본 품목 정산</span>
+                        <span className="summary-value free-text">무상 수거</span>
+                      </div>
+                    ) : basicTotalKg > 20 && (
+                      <div className="summary-row">
+                        <span>기본 품목 정산</span>
+                        <span className="summary-value">{basicPrice.toLocaleString()}원</span>
+                      </div>
+                    )}
+                    {additionalPrice > 0 && (
+                      <div className="summary-row">
+                        <span>추가 품목 정산</span>
+                        <span className="summary-value">{additionalPrice.toLocaleString()}원</span>
+                      </div>
+                    )}
+                    <div className="summary-row summary-price">
+                      <span>예상 정산 금액</span>
+                      <span className="summary-value">{estimatedPrice.toLocaleString()}원</span>
+                    </div>
+                  </div>
+
+                  {/* 무상 수거 안내 */}
+                  {isFreePickup && (
+                    <div className="free-pickup-notice">
+                      <span className="notice-icon">✓</span>
+                      기본 품목 20kg 이하 무상 수거 대상입니다
+                    </div>
+                  )}
+
+                  {/* 기본 품목 필수 안내 */}
+                  {!isMinimumMet && (
+                    <div className="minimum-warning">
+                      <span className="warning-icon">⚠</span>
+                      기본 품목(헌옷+신발+가방)을 1kg 이상 입력해주세요
+                    </div>
+                  )}
+
+                  {/* 최대값 도달 안내 */}
+                  {isMaxReached && (
+                    <div className="max-reached-notice">
+                      <span className="notice-icon">📞</span>
+                      대량 수거는 010-8186-7982로 연락주세요
+                    </div>
+                  )}
+                </div>
               </div>
 
               <button
@@ -1453,43 +1720,132 @@ function App() {
                 <span className="logo-text">에코픽</span>
               </a>
               <p className="footer-slogan">옷의 새로운 여정을 함께합니다</p>
+              <div className="footer-info">
+                <div className="footer-info-row">
+                  <span className="info-label">상호명</span>
+                  <span className="info-value">헌옷마을 (에코픽)</span>
+                </div>
+                <div className="footer-info-row">
+                  <span className="info-label">대표자명</span>
+                  <span className="info-value">신재영</span>
+                </div>
+                <div className="footer-info-row">
+                  <span className="info-label">사업자번호</span>
+                  <span className="info-value">316-19-00023</span>
+                </div>
+                <div className="footer-info-row">
+                  <span className="info-label">통신판매신고번호</span>
+                  <span className="info-value">2016-경기부천-1758</span>
+                </div>
+                <div className="footer-info-row">
+                  <span className="info-label">소재지</span>
+                  <span className="info-value">경기도 부천시 원미구 부흥로296번길 25, 지층(중동)</span>
+                </div>
+              </div>
             </div>
-            <div className="footer-info">
-              <div className="footer-info-row">
-                <span className="info-label">상호명</span>
-                <span className="info-value">헌옷마을 (에코픽)</span>
+            <div className="footer-links">
+              <div className="footer-column">
+                <h4>서비스</h4>
+                <button onClick={() => setIsModalOpen(true)} className="footer-link-btn">수거 신청</button>
+                <Link to="/guide">수거 가이드</Link>
+                <a href="#process">이용 방법</a>
+                <a href="#faq">자주 묻는 질문</a>
               </div>
-              <div className="footer-info-row">
-                <span className="info-label">대표자명</span>
-                <span className="info-value">신재영</span>
-              </div>
-              <div className="footer-info-row">
-                <span className="info-label">사업자번호</span>
-                <span className="info-value">316-19-00023</span>
-              </div>
-              <div className="footer-info-row">
-                <span className="info-label">통신판매신고번호</span>
-                <span className="info-value">2016-경기부천-1758</span>
-              </div>
-              <div className="footer-info-row">
-                <span className="info-label">소재지</span>
-                <span className="info-value">경기도 부천시 원미구 부흥로296번길 25, 지층(중동)</span>
-              </div>
-              <div className="footer-info-row">
-                <span className="info-label">전화번호</span>
-                <span className="info-value"><a href="tel:010-8186-7982">010-8186-7982</a></span>
-              </div>
-              <div className="footer-info-row">
-                <span className="info-label">이메일</span>
-                <span className="info-value"><a href="mailto:scissorsin@naver.com">scissorsin@naver.com</a></span>
+              <div className="footer-column">
+                <h4>고객센터</h4>
+                <a href="tel:010-8186-7982">010-8186-7982</a>
+                <a href="mailto:scissorsin@naver.com">scissorsin@naver.com</a>
               </div>
             </div>
           </div>
           <div className="footer-bottom">
             <p>© 2024 헌옷마을 (에코픽). All rights reserved.</p>
+            <div className="footer-legal">
+              <a href="#">이용약관</a>
+              <a href="#">개인정보처리방침</a>
+            </div>
           </div>
         </div>
       </footer>
+
+      {/* Chatbot Floating Button */}
+      <div className="chatbot-container">
+        <button
+          className={`chatbot-button ${isChatOpen ? 'active' : ''}`}
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          aria-label="채팅 상담"
+        >
+          {isChatOpen ? (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          ) : (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          )}
+        </button>
+
+        {/* Chat Window */}
+        {isChatOpen && (
+          <div className="chatbot-window">
+            <div className="chatbot-header">
+              <div className="chatbot-header-info">
+                <span className="chatbot-title">에코픽 상담</span>
+                <span className="chatbot-status">● 상담 가능</span>
+              </div>
+              <button
+                className="chatbot-close"
+                onClick={() => setIsChatOpen(false)}
+                aria-label="닫기"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="chatbot-messages">
+              <div className="chatbot-message bot">
+                <div className="message-avatar">🤖</div>
+                <div className="message-content">
+                  <p>안녕하세요! 에코픽입니다.</p>
+                  <p>헌옷 수거 관련 문의사항이 있으시면 편하게 연락주세요!</p>
+                </div>
+              </div>
+              <div className="chatbot-contact-options">
+                <a href="tel:010-8186-7982" className="contact-option phone">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                  </svg>
+                  <div className="contact-info">
+                    <span className="contact-label">전화 상담</span>
+                    <span className="contact-value">010-8186-7982</span>
+                  </div>
+                </a>
+                <a href="mailto:scissorsin@naver.com" className="contact-option email">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                  <div className="contact-info">
+                    <span className="contact-label">이메일 문의</span>
+                    <span className="contact-value">scissorsin@naver.com</span>
+                  </div>
+                </a>
+              </div>
+            </div>
+            <div className="chatbot-footer">
+              <button
+                className="chatbot-apply-button"
+                onClick={() => {
+                  setIsChatOpen(false)
+                  setIsModalOpen(true)
+                }}
+              >
+                수거 신청하기
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
     </>
   )
