@@ -100,7 +100,9 @@ function App() {
   const [computerCount, setComputerCount] = useState(0)  // 컴퓨터/노트북 (대)
   const [monitorCount, setMonitorCount] = useState(0)    // 모니터 (대)
   const [phoneCount, setPhoneCount] = useState(0)        // 폐휴대폰 (개)
+  const [duckdownKg, setDuckdownKg] = useState(0)        // 덕다운 이불 (kg)
   const [isAdditionalOpen, setIsAdditionalOpen] = useState(false)  // 추가 품목 펼침 상태
+  const [isGuideOpen, setIsGuideOpen] = useState(false)  // 20kg 가이드 펼침 상태
 
   // 지역 검증 상태
   const [regionStatus, setRegionStatus] = useState(null) // 'available' | 'unavailable' | null
@@ -132,7 +134,7 @@ function App() {
   // 예상 정산 금액 계산
   const basicTotalKg = clothesKg + shoesKg + bagsKg  // 기본 품목 합산
   const basicPrice = (clothesKg * 350) + (shoesKg * 400) + (bagsKg * 700)  // 기본 품목 정산
-  const additionalPrice = (panKg * 200) + (computerCount * 3000) + (monitorCount * 1000) + (phoneCount * 500)  // 추가 품목 정산
+  const additionalPrice = (panKg * 200) + (computerCount * 3000) + (monitorCount * 1000) + (phoneCount * 500) + (duckdownKg * 1000)  // 추가 품목 정산
 
   // 무상 수거 여부 (기본 품목 20kg 이하)
   const isFreePickup = basicTotalKg > 0 && basicTotalKg <= 20
@@ -145,7 +147,7 @@ function App() {
 
   // 최대값 도달 체크
   const isMaxReached = clothesKg >= 500 || shoesKg >= 500 || bagsKg >= 500 ||
-    panKg >= 500 || computerCount >= 100 || monitorCount >= 100 || phoneCount >= 100
+    panKg >= 500 || computerCount >= 100 || monitorCount >= 100 || phoneCount >= 100 || duckdownKg >= 100
 
   // 일요일 체크 함수
   const isSunday = (dateString) => {
@@ -181,6 +183,7 @@ function App() {
       computerCount: `${computerCount}대`,
       monitorCount: `${monitorCount}대`,
       phoneCount: `${phoneCount}개`,
+      duckdownKg: `${duckdownKg}KG`,
       basicTotalKg: `${basicTotalKg}KG`,
       pickupFeeType: isFreePickup ? '무상수거' : '유상수거',
       basicPrice: `${basicPrice.toLocaleString()}원`,
@@ -228,7 +231,9 @@ function App() {
     setComputerCount(0)
     setMonitorCount(0)
     setPhoneCount(0)
+    setDuckdownKg(0)
     setIsAdditionalOpen(false)
+    setIsGuideOpen(false)
     setRegionStatus(null)
   }
 
@@ -921,6 +926,40 @@ function App() {
               <div className="form-group calculator-group">
                 <label className="form-label">수거량 계산기</label>
 
+                {/* 20kg 가이드 */}
+                <div className="kg-guide-wrapper">
+                  <button
+                    type="button"
+                    className={`kg-guide-toggle ${isGuideOpen ? 'open' : ''}`}
+                    onClick={() => setIsGuideOpen(!isGuideOpen)}
+                  >
+                    <span className="guide-icon">💡</span>
+                    <span>20kg이 얼마나 될까요?</span>
+                    <span className={`guide-arrow ${isGuideOpen ? 'open' : ''}`}>▼</span>
+                  </button>
+                  <div className={`kg-guide-content ${isGuideOpen ? 'open' : ''}`}>
+                    <div className="guide-image-wrap">
+                      <img
+                        src="https://img.kr.gcp-karroter.net/business-profile/bizPlatform/profile/100580618/1756421405553/YmM2MWRiNzBiZmQ2YTM0ZDhlYWNlNWFkMjZjMTFkNjRmODMzYWY1MzVkMjVkYThkNDliMjU4MmU2ZGRkNWNhMl8wLmpwZWc=.jpeg?q=95&s=1440x1440&t=inside"
+                        alt="다이소 90L 재활용봉투"
+                        className="guide-image"
+                      />
+                    </div>
+                    <div className="guide-item">
+                      <span className="guide-emoji">🛍️</span>
+                      <span>다이소 90L 재활용봉투 <strong>3~4개</strong> ≈ 20kg</span>
+                    </div>
+                    <div className="guide-item">
+                      <span className="guide-emoji">📦</span>
+                      <span>김장용 비닐 <strong>3~4개</strong> ≈ 20kg</span>
+                    </div>
+                    <div className="guide-tip">
+                      무게가 정확히 안 맞아도 괜찮아요!<br/>
+                      연락 주시면 최대한 맞춰드립니다 😊
+                    </div>
+                  </div>
+                </div>
+
                 <div className="calculator-section-label">기본 수거 품목 (필수)</div>
 
                 {/* 헌옷 */}
@@ -1013,6 +1052,12 @@ function App() {
                   </div>
                 </div>
 
+                {/* 신발/가방 분류 안내 */}
+                <div className="sorting-notice">
+                  <span className="notice-icon">📌</span>
+                  <span>신발과 가방은 헌옷과 분리하여 따로 포장해 주세요</span>
+                </div>
+
                 {/* 추가 품목 아코디언 */}
                 <div className="additional-accordion">
                   <div
@@ -1021,7 +1066,7 @@ function App() {
                   >
                     <div className="additional-header-content">
                       <span className="additional-title">추가 수거 품목 (선택)</span>
-                      <span className="additional-items">🍳 냄비/후라이팬 · 💻 컴퓨터 · 🖥️ 모니터 · 📱 폐휴대폰</span>
+                      <span className="additional-items">🍳 냄비/후라이팬 · 💻 컴퓨터 · 🖥️ 모니터 · 📱 폐휴대폰 · 🛏️ 덕다운이불</span>
                     </div>
                     <span className="additional-toggle">{isAdditionalOpen ? '−' : '+'}</span>
                   </div>
@@ -1146,6 +1191,36 @@ function App() {
                         </div>
                       </div>
                     </div>
+
+                    {/* 덕다운 이불 */}
+                    <div className="calculator-row">
+                      <div className="calculator-label">
+                        <span className="calc-icon">🛏️</span>
+                        <span>덕다운 이불</span>
+                        <span className="calc-price">1,000원/KG</span>
+                      </div>
+                      <div className="calculator-control">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={duckdownKg}
+                          onChange={(e) => setDuckdownKg(Number(e.target.value))}
+                          className="calc-slider"
+                        />
+                        <div className="calc-input-wrap">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={duckdownKg}
+                            onChange={(e) => setDuckdownKg(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                            className="calc-input"
+                          />
+                          <span className="calc-unit">KG</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1225,6 +1300,9 @@ function App() {
                     <option value="오후 (12:00-14:00)">오후 (12:00-14:00)</option>
                     <option value="오후 (14:00-16:00)">오후 (14:00-16:00)</option>
                   </select>
+                </div>
+                <div className="time-notice">
+                  방문 시간은 수거량과 교통 상황에 따라 변경될 수 있습니다. 비대면 수거도 가능하오니, 문 앞에 놓아주시면 최대한 빠르게 수거해드리겠습니다.
                 </div>
               </div>
 
@@ -1376,33 +1454,39 @@ function App() {
               </a>
               <p className="footer-slogan">옷의 새로운 여정을 함께합니다</p>
             </div>
-            <div className="footer-links">
-              <div className="footer-column">
-                <h4>서비스</h4>
-                <button onClick={() => setIsModalOpen(true)} className="footer-link-btn">수거 신청</button>
-                <Link to="/guide">수거 가이드</Link>
-                <a href="#process">이용 방법</a>
-                <a href="#faq">자주 묻는 질문</a>
+            <div className="footer-info">
+              <div className="footer-info-row">
+                <span className="info-label">상호명</span>
+                <span className="info-value">헌옷마을 (에코픽)</span>
               </div>
-              <div className="footer-column">
-                <h4>회사</h4>
-                <a href="#">회사 소개</a>
-                <a href="#">채용</a>
-                <a href="#">블로그</a>
+              <div className="footer-info-row">
+                <span className="info-label">대표자명</span>
+                <span className="info-value">신재영</span>
               </div>
-              <div className="footer-column">
-                <h4>고객센터</h4>
-                <a href="tel:1588-0000">1588-0000</a>
-                <a href="mailto:help@ecopick.kr">help@ecopick.kr</a>
+              <div className="footer-info-row">
+                <span className="info-label">사업자번호</span>
+                <span className="info-value">316-19-00023</span>
+              </div>
+              <div className="footer-info-row">
+                <span className="info-label">통신판매신고번호</span>
+                <span className="info-value">2016-경기부천-1758</span>
+              </div>
+              <div className="footer-info-row">
+                <span className="info-label">소재지</span>
+                <span className="info-value">경기도 부천시 원미구 부흥로296번길 25, 지층(중동)</span>
+              </div>
+              <div className="footer-info-row">
+                <span className="info-label">전화번호</span>
+                <span className="info-value"><a href="tel:010-8186-7982">010-8186-7982</a></span>
+              </div>
+              <div className="footer-info-row">
+                <span className="info-label">이메일</span>
+                <span className="info-value"><a href="mailto:scissorsin@naver.com">scissorsin@naver.com</a></span>
               </div>
             </div>
           </div>
           <div className="footer-bottom">
-            <p>© 2024 에코픽. All rights reserved.</p>
-            <div className="footer-legal">
-              <a href="#">이용약관</a>
-              <a href="#">개인정보처리방침</a>
-            </div>
+            <p>© 2024 헌옷마을 (에코픽). All rights reserved.</p>
           </div>
         </div>
       </footer>

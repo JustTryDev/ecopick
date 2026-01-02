@@ -1011,6 +1011,131 @@
   border-bottom: 1px solid var(--color-gray-200);
 }
 
+/* 20kg 가이드 */
+.kg-guide-wrapper {
+  margin-bottom: 16px;
+}
+
+.kg-guide-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: #FFF9E6;
+  border: 1px solid #FFE082;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  transition: all 0.2s ease;
+}
+
+.kg-guide-toggle:hover {
+  background: #FFF3CD;
+}
+
+.kg-guide-toggle.open {
+  border-radius: 10px 10px 0 0;
+}
+
+.guide-icon {
+  font-size: 16px;
+}
+
+.guide-arrow {
+  margin-left: auto;
+  font-size: 10px;
+  transition: transform 0.3s ease;
+}
+
+.guide-arrow.open {
+  transform: rotate(180deg);
+}
+
+.kg-guide-content {
+  max-height: 0;
+  overflow: hidden;
+  background: #FFFEF5;
+  border: 1px solid #FFE082;
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.kg-guide-content.open {
+  max-height: 600px;
+  padding: 14px;
+}
+
+.guide-image-wrap {
+  margin-bottom: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.guide-image {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.guide-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.guide-emoji {
+  font-size: 18px;
+}
+
+.guide-item strong {
+  color: #E67E22;
+  font-weight: 600;
+}
+
+.guide-tip {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #FFE082;
+  font-size: 13px;
+  color: #888;
+  line-height: 1.5;
+}
+
+/* 신발/가방 분류 안내 */
+.sorting-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #E3F2FD;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1565C0;
+  margin-top: 12px;
+}
+
+.sorting-notice .notice-icon {
+  font-size: 14px;
+}
+
+/* 방문 시간 안내 */
+.time-notice {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #FFF3E0;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #E65100;
+  line-height: 1.5;
+}
+
 /* 추가 품목 아코디언 */
 .additional-accordion {
   margin-top: 16px;
@@ -1492,6 +1617,38 @@
 .footer-links {
   display: flex;
   gap: 80px;
+}
+
+.footer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.footer-info-row {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.footer-info-row .info-label {
+  color: var(--color-gray-500);
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.footer-info-row .info-value {
+  color: var(--color-gray-300);
+}
+
+.footer-info-row .info-value a {
+  color: var(--color-gray-300);
+  transition: color 0.2s;
+}
+
+.footer-info-row .info-value a:hover {
+  color: var(--color-white);
 }
 
 .footer-column {
