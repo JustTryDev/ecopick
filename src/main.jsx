@@ -37,7 +37,7 @@ createRoot(document.getElementById('root')).render(
   // StrictMode: 개발 모드에서 추가 검사 실행 (배포 시에는 영향 없음)
   <StrictMode>
     {/* BrowserRouter: 브라우저의 URL을 React가 관리할 수 있게 함 */}
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       {/* Routes: 여러 개의 Route 중 URL에 맞는 하나만 보여줌 */}
       <Routes>
         {/*
