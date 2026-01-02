@@ -90,10 +90,17 @@ function App() {
   const [vehicleRegistration, setVehicleRegistration] = useState('')
   const addressLayerRef = useRef(null)
 
-  // 계산기 상태
+  // 계산기 상태 - 기본 품목
   const [clothesKg, setClothesKg] = useState(0)
   const [shoesKg, setShoesKg] = useState(0)
   const [bagsKg, setBagsKg] = useState(0)
+
+  // 계산기 상태 - 추가 품목
+  const [panKg, setPanKg] = useState(0)              // 후라이팬/냄비 (kg)
+  const [computerCount, setComputerCount] = useState(0)  // 컴퓨터/노트북 (대)
+  const [monitorCount, setMonitorCount] = useState(0)    // 모니터 (대)
+  const [phoneCount, setPhoneCount] = useState(0)        // 폐휴대폰 (개)
+  const [isAdditionalOpen, setIsAdditionalOpen] = useState(false)  // 추가 품목 펼침 상태
 
   // 지역 검증 상태
   const [regionStatus, setRegionStatus] = useState(null) // 'available' | 'unavailable' | null
@@ -123,9 +130,38 @@ function App() {
   }
 
   // 예상 정산 금액 계산
-  const totalKg = clothesKg + shoesKg + bagsKg
-  const estimatedPrice = (clothesKg * 350) + (shoesKg * 400) + (bagsKg * 700)
-  const isMinimumMet = totalKg >= 20
+  const basicTotalKg = clothesKg + shoesKg + bagsKg  // 기본 품목 합산
+  const basicPrice = (clothesKg * 350) + (shoesKg * 400) + (bagsKg * 700)  // 기본 품목 정산
+  const additionalPrice = (panKg * 200) + (computerCount * 3000) + (monitorCount * 1000) + (phoneCount * 500)  // 추가 품목 정산
+
+  // 무상 수거 여부 (기본 품목 20kg 이하)
+  const isFreePickup = basicTotalKg > 0 && basicTotalKg <= 20
+
+  // 최종 정산 금액 (무상 수거 시 기본품목 0원)
+  const estimatedPrice = isFreePickup ? additionalPrice : basicPrice + additionalPrice
+
+  // 신청 가능 여부 (기본 품목 1kg 이상 필수)
+  const isMinimumMet = basicTotalKg > 0
+
+  // 최대값 도달 체크
+  const isMaxReached = clothesKg >= 500 || shoesKg >= 500 || bagsKg >= 500 ||
+    panKg >= 500 || computerCount >= 100 || monitorCount >= 100 || phoneCount >= 100
+
+  // 일요일 체크 함수
+  const isSunday = (dateString) => {
+    const date = new Date(dateString)
+    return date.getDay() === 0
+  }
+
+  // 날짜 변경 핸들러 (일요일 휴무)
+  const handleDateChange = (e) => {
+    const selectedDate = e.target.value
+    if (isSunday(selectedDate)) {
+      alert('일요일은 휴무일입니다. 다른 날짜를 선택해주세요.')
+      return
+    }
+    setPreferredDate(selectedDate)
+  }
 
   const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwe0kebW-bhj-VksubN6YZ2oc14UFNb5a82yxr_RV6QyUCZ2jBd6tYErbpPDXXFPkfv/exec'
 
@@ -141,7 +177,14 @@ function App() {
       clothesKg: `${clothesKg}KG`,
       shoesKg: `${shoesKg}KG`,
       bagsKg: `${bagsKg}KG`,
-      totalKg: `${totalKg}KG`,
+      panKg: `${panKg}KG`,
+      computerCount: `${computerCount}대`,
+      monitorCount: `${monitorCount}대`,
+      phoneCount: `${phoneCount}개`,
+      basicTotalKg: `${basicTotalKg}KG`,
+      pickupFeeType: isFreePickup ? '무상수거' : '유상수거',
+      basicPrice: `${basicPrice.toLocaleString()}원`,
+      additionalPrice: `${additionalPrice.toLocaleString()}원`,
       estimatedPrice: `${estimatedPrice.toLocaleString()}원`,
       preferredDate,
       preferredTime,
@@ -181,6 +224,11 @@ function App() {
     setClothesKg(0)
     setShoesKg(0)
     setBagsKg(0)
+    setPanKg(0)
+    setComputerCount(0)
+    setMonitorCount(0)
+    setPhoneCount(0)
+    setIsAdditionalOpen(false)
     setRegionStatus(null)
   }
 
@@ -586,74 +634,174 @@ function App() {
 
       {/* Review Section */}
       <section id="review" className="review" ref={reviewAnim.ref}>
-        <div className="container">
+        <div className="container review-header-container">
           <p className={`section-label fade-up ${reviewAnim.isVisible ? 'visible' : ''}`}>고객 후기</p>
           <h2 className={`section-title fade-up delay-1 ${reviewAnim.isVisible ? 'visible' : ''}`}>
             에코픽을 이용한<br />
             고객님들의 이야기
           </h2>
-          <div className="review-grid">
-            {[
-              {
-                name: '김지은',
-                location: '서울 강남구',
-                rating: 5,
-                text: '이사하면서 안 입는 옷들이 많았는데, 에코픽 덕분에 깔끔하게 정리하고 용돈까지 받았어요! 비대면이라 편하고 좋았습니다.',
-                date: '2024.12.15'
-              },
-              {
-                name: '박민수',
-                location: '경기 성남시',
-                rating: 5,
-                text: '환경도 지키고 돈도 벌 수 있어서 일석이조예요. 수거 기사님도 친절하시고, 정산도 빨라서 만족합니다.',
-                date: '2024.12.10'
-              },
-              {
-                name: '이수진',
-                location: '인천 연수구',
-                rating: 5,
-                text: '옷장에 쌓여있던 옷들 정리하니 너무 시원해요. 다음에도 또 이용할게요!',
-                date: '2024.12.08'
-              },
-              {
-                name: '최영호',
-                location: '서울 마포구',
-                rating: 4,
-                text: '아이 옷이 계속 작아져서 고민이었는데, 에코픽으로 한번에 해결했어요. 다만 주말 예약이 좀 빠듯해요.',
-                date: '2024.12.05'
-              },
-              {
-                name: '정미영',
-                location: '경기 수원시',
-                rating: 5,
-                text: '카카오톡으로 진행 상황 알려주셔서 안심이 됐어요. 정산 금액도 생각보다 많이 나왔습니다!',
-                date: '2024.11.28'
-              },
-              {
-                name: '한상우',
-                location: '서울 송파구',
-                rating: 5,
-                text: '버리기엔 아깝고 팔기엔 귀찮았던 옷들, 에코픽이 다 가져가니 속 시원해요. 환경에도 기여하는 것 같아 뿌듯합니다.',
-                date: '2024.11.25'
-              }
-            ].map((review, index) => (
-              <div
-                key={index}
-                className={`review-card fade-up delay-${(index % 3) + 2} ${reviewAnim.isVisible ? 'visible' : ''}`}
-              >
-                <div className="review-header">
-                  <div className="review-info">
-                    <span className="review-name">{review.name}</span>
-                    <span className="review-location">{review.location}</span>
+        </div>
+
+        {/* 마키 슬라이드 - 첫 번째 줄 (왼쪽으로) */}
+        <div className="review-marquee-wrapper">
+          <div className="review-marquee-fade review-marquee-fade-left"></div>
+          <div className="review-marquee-fade review-marquee-fade-right"></div>
+
+          <div className="review-marquee review-marquee-left">
+            <div className="review-marquee-track">
+              {[
+                {
+                  name: '김지은',
+                  location: '서울 강남구',
+                  rating: 5,
+                  text: '이사하면서 안 입는 옷들이 많았는데, 에코픽 덕분에 깔끔하게 정리하고 용돈까지 받았어요!',
+                  date: '2024.12.15'
+                },
+                {
+                  name: '박민수',
+                  location: '경기 성남시',
+                  rating: 5,
+                  text: '환경도 지키고 돈도 벌 수 있어서 일석이조예요. 수거 기사님도 친절하시고, 정산도 빨라서 만족합니다.',
+                  date: '2024.12.10'
+                },
+                {
+                  name: '이수진',
+                  location: '인천 연수구',
+                  rating: 5,
+                  text: '옷장에 쌓여있던 옷들 정리하니 너무 시원해요. 다음에도 또 이용할게요!',
+                  date: '2024.12.08'
+                },
+                {
+                  name: '최영호',
+                  location: '서울 마포구',
+                  rating: 4,
+                  text: '아이 옷이 계속 작아져서 고민이었는데, 에코픽으로 한번에 해결했어요.',
+                  date: '2024.12.05'
+                }
+              ].concat([
+                {
+                  name: '김지은',
+                  location: '서울 강남구',
+                  rating: 5,
+                  text: '이사하면서 안 입는 옷들이 많았는데, 에코픽 덕분에 깔끔하게 정리하고 용돈까지 받았어요!',
+                  date: '2024.12.15'
+                },
+                {
+                  name: '박민수',
+                  location: '경기 성남시',
+                  rating: 5,
+                  text: '환경도 지키고 돈도 벌 수 있어서 일석이조예요. 수거 기사님도 친절하시고, 정산도 빨라서 만족합니다.',
+                  date: '2024.12.10'
+                },
+                {
+                  name: '이수진',
+                  location: '인천 연수구',
+                  rating: 5,
+                  text: '옷장에 쌓여있던 옷들 정리하니 너무 시원해요. 다음에도 또 이용할게요!',
+                  date: '2024.12.08'
+                },
+                {
+                  name: '최영호',
+                  location: '서울 마포구',
+                  rating: 4,
+                  text: '아이 옷이 계속 작아져서 고민이었는데, 에코픽으로 한번에 해결했어요.',
+                  date: '2024.12.05'
+                }
+              ]).map((review, index) => (
+                <div key={index} className="review-card">
+                  <div className="review-header">
+                    <div className="review-info">
+                      <span className="review-name">{review.name}</span>
+                      <span className="review-location">{review.location}</span>
+                    </div>
+                    <div className="review-rating">
+                      {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                    </div>
                   </div>
-                  <div className="review-rating">
-                    {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
-                  </div>
+                  <p className="review-text">"{review.text}"</p>
+                  <span className="review-date">{review.date}</span>
                 </div>
-                <p className="review-text">"{review.text}"</p>
-                <span className="review-date">{review.date}</span>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+
+          {/* 마키 슬라이드 - 두 번째 줄 (오른쪽으로) */}
+          <div className="review-marquee review-marquee-right">
+            <div className="review-marquee-track">
+              {[
+                {
+                  name: '정미영',
+                  location: '경기 수원시',
+                  rating: 5,
+                  text: '카카오톡으로 진행 상황 알려주셔서 안심이 됐어요. 정산 금액도 생각보다 많이 나왔습니다!',
+                  date: '2024.11.28'
+                },
+                {
+                  name: '한상우',
+                  location: '서울 송파구',
+                  rating: 5,
+                  text: '버리기엔 아깝고 팔기엔 귀찮았던 옷들, 에코픽이 다 가져가니 속 시원해요.',
+                  date: '2024.11.25'
+                },
+                {
+                  name: '윤서연',
+                  location: '경기 고양시',
+                  rating: 5,
+                  text: '시간 약속도 잘 지켜주시고 친절하게 응대해주셔서 좋았어요. 강력 추천합니다!',
+                  date: '2024.11.20'
+                },
+                {
+                  name: '장현우',
+                  location: '서울 영등포구',
+                  rating: 5,
+                  text: '묵혀둔 옷들 정리하고 환경도 지키고 돈도 받고! 완전 좋아요.',
+                  date: '2024.11.15'
+                }
+              ].concat([
+                {
+                  name: '정미영',
+                  location: '경기 수원시',
+                  rating: 5,
+                  text: '카카오톡으로 진행 상황 알려주셔서 안심이 됐어요. 정산 금액도 생각보다 많이 나왔습니다!',
+                  date: '2024.11.28'
+                },
+                {
+                  name: '한상우',
+                  location: '서울 송파구',
+                  rating: 5,
+                  text: '버리기엔 아깝고 팔기엔 귀찮았던 옷들, 에코픽이 다 가져가니 속 시원해요.',
+                  date: '2024.11.25'
+                },
+                {
+                  name: '윤서연',
+                  location: '경기 고양시',
+                  rating: 5,
+                  text: '시간 약속도 잘 지켜주시고 친절하게 응대해주셔서 좋았어요. 강력 추천합니다!',
+                  date: '2024.11.20'
+                },
+                {
+                  name: '장현우',
+                  location: '서울 영등포구',
+                  rating: 5,
+                  text: '묵혀둔 옷들 정리하고 환경도 지키고 돈도 받고! 완전 좋아요.',
+                  date: '2024.11.15'
+                }
+              ]).map((review, index) => (
+                <div key={index} className="review-card">
+                  <div className="review-header">
+                    <div className="review-info">
+                      <span className="review-name">{review.name}</span>
+                      <span className="review-location">{review.location}</span>
+                    </div>
+                    <div className="review-rating">
+                      {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                    </div>
+                  </div>
+                  <p className="review-text">"{review.text}"</p>
+                  <span className="review-date">{review.date}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -772,7 +920,8 @@ function App() {
               {/* 수거량 계산기 */}
               <div className="form-group calculator-group">
                 <label className="form-label">수거량 계산기</label>
-                <p className="form-hint">슬라이더를 조절하거나 숫자를 직접 입력하세요 (최소 20KG 이상)</p>
+
+                <div className="calculator-section-label">기본 수거 품목 (필수)</div>
 
                 {/* 헌옷 */}
                 <div className="calculator-row">
@@ -785,7 +934,7 @@ function App() {
                     <input
                       type="range"
                       min="0"
-                      max="50"
+                      max="500"
                       value={clothesKg}
                       onChange={(e) => setClothesKg(Number(e.target.value))}
                       className="calc-slider"
@@ -794,9 +943,9 @@ function App() {
                       <input
                         type="number"
                         min="0"
-                        max="100"
+                        max="500"
                         value={clothesKg}
-                        onChange={(e) => setClothesKg(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                        onChange={(e) => setClothesKg(Math.max(0, Math.min(500, Number(e.target.value) || 0)))}
                         className="calc-input"
                       />
                       <span className="calc-unit">KG</span>
@@ -815,7 +964,7 @@ function App() {
                     <input
                       type="range"
                       min="0"
-                      max="20"
+                      max="500"
                       value={shoesKg}
                       onChange={(e) => setShoesKg(Number(e.target.value))}
                       className="calc-slider"
@@ -824,9 +973,9 @@ function App() {
                       <input
                         type="number"
                         min="0"
-                        max="50"
+                        max="500"
                         value={shoesKg}
-                        onChange={(e) => setShoesKg(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
+                        onChange={(e) => setShoesKg(Math.max(0, Math.min(500, Number(e.target.value) || 0)))}
                         className="calc-input"
                       />
                       <span className="calc-unit">KG</span>
@@ -845,7 +994,7 @@ function App() {
                     <input
                       type="range"
                       min="0"
-                      max="20"
+                      max="500"
                       value={bagsKg}
                       onChange={(e) => setBagsKg(Number(e.target.value))}
                       className="calc-slider"
@@ -854,9 +1003,9 @@ function App() {
                       <input
                         type="number"
                         min="0"
-                        max="50"
+                        max="500"
                         value={bagsKg}
-                        onChange={(e) => setBagsKg(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
+                        onChange={(e) => setBagsKg(Math.max(0, Math.min(500, Number(e.target.value) || 0)))}
                         className="calc-input"
                       />
                       <span className="calc-unit">KG</span>
@@ -864,22 +1013,192 @@ function App() {
                   </div>
                 </div>
 
+                {/* 추가 품목 아코디언 */}
+                <div className="additional-accordion">
+                  <div
+                    className={`additional-header ${isAdditionalOpen ? 'open' : ''}`}
+                    onClick={() => setIsAdditionalOpen(!isAdditionalOpen)}
+                  >
+                    <div className="additional-header-content">
+                      <span className="additional-title">추가 수거 품목 (선택)</span>
+                      <span className="additional-items">🍳 냄비/후라이팬 · 💻 컴퓨터 · 🖥️ 모니터 · 📱 폐휴대폰</span>
+                    </div>
+                    <span className="additional-toggle">{isAdditionalOpen ? '−' : '+'}</span>
+                  </div>
+
+                  <div className={`additional-content ${isAdditionalOpen ? 'open' : ''}`}>
+                    {/* 후라이팬/냄비 */}
+                    <div className="calculator-row">
+                      <div className="calculator-label">
+                        <span className="calc-icon">🍳</span>
+                        <span>후라이팬/냄비</span>
+                        <span className="calc-price">200원/KG</span>
+                      </div>
+                      <div className="calculator-control">
+                        <input
+                          type="range"
+                          min="0"
+                          max="500"
+                          value={panKg}
+                          onChange={(e) => setPanKg(Number(e.target.value))}
+                          className="calc-slider"
+                        />
+                        <div className="calc-input-wrap">
+                          <input
+                            type="number"
+                            min="0"
+                            max="500"
+                            value={panKg}
+                            onChange={(e) => setPanKg(Math.max(0, Math.min(500, Number(e.target.value) || 0)))}
+                            className="calc-input"
+                          />
+                          <span className="calc-unit">KG</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 컴퓨터/노트북 */}
+                    <div className="calculator-row">
+                      <div className="calculator-label">
+                        <span className="calc-icon">💻</span>
+                        <span>컴퓨터/노트북</span>
+                        <span className="calc-price">3,000원/대</span>
+                      </div>
+                      <div className="calculator-control">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={computerCount}
+                          onChange={(e) => setComputerCount(Number(e.target.value))}
+                          className="calc-slider"
+                        />
+                        <div className="calc-input-wrap">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={computerCount}
+                            onChange={(e) => setComputerCount(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                            className="calc-input"
+                          />
+                          <span className="calc-unit">대</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 모니터 */}
+                    <div className="calculator-row">
+                      <div className="calculator-label">
+                        <span className="calc-icon">🖥️</span>
+                        <span>모니터</span>
+                        <span className="calc-price">1,000원/대</span>
+                      </div>
+                      <div className="calculator-control">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={monitorCount}
+                          onChange={(e) => setMonitorCount(Number(e.target.value))}
+                          className="calc-slider"
+                        />
+                        <div className="calc-input-wrap">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={monitorCount}
+                            onChange={(e) => setMonitorCount(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                            className="calc-input"
+                          />
+                          <span className="calc-unit">대</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 폐휴대폰 */}
+                    <div className="calculator-row">
+                      <div className="calculator-label">
+                        <span className="calc-icon">📱</span>
+                        <span>폐휴대폰</span>
+                        <span className="calc-price">500원/개</span>
+                      </div>
+                      <div className="calculator-control">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={phoneCount}
+                          onChange={(e) => setPhoneCount(Number(e.target.value))}
+                          className="calc-slider"
+                        />
+                        <div className="calc-input-wrap">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={phoneCount}
+                            onChange={(e) => setPhoneCount(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                            className="calc-input"
+                          />
+                          <span className="calc-unit">개</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* 총합 및 예상 정산 */}
                 <div className="calculator-summary">
                   <div className="summary-row">
-                    <span>총 무게</span>
-                    <span className="summary-value">{totalKg} KG</span>
+                    <span>기본 품목 무게</span>
+                    <span className="summary-value">{basicTotalKg} KG</span>
                   </div>
+                  {isFreePickup ? (
+                    <div className="summary-row free-pickup-row">
+                      <span>기본 품목 정산</span>
+                      <span className="summary-value free-text">무상 수거</span>
+                    </div>
+                  ) : basicTotalKg > 20 && (
+                    <div className="summary-row">
+                      <span>기본 품목 정산</span>
+                      <span className="summary-value">{basicPrice.toLocaleString()}원</span>
+                    </div>
+                  )}
+                  {additionalPrice > 0 && (
+                    <div className="summary-row">
+                      <span>추가 품목 정산</span>
+                      <span className="summary-value">{additionalPrice.toLocaleString()}원</span>
+                    </div>
+                  )}
                   <div className="summary-row summary-price">
                     <span>예상 정산 금액</span>
                     <span className="summary-value">{estimatedPrice.toLocaleString()}원</span>
                   </div>
                 </div>
 
-                {!isMinimumMet && totalKg > 0 && (
+                {/* 무상 수거 안내 */}
+                {isFreePickup && (
+                  <div className="free-pickup-notice">
+                    <span className="notice-icon">✓</span>
+                    기본 품목 20kg 이하 무상 수거 대상입니다
+                  </div>
+                )}
+
+                {/* 기본 품목 필수 안내 */}
+                {!isMinimumMet && (
                   <div className="minimum-warning">
                     <span className="warning-icon">⚠</span>
-                    최소 20KG 이상 신청 가능합니다 (현재 {totalKg}KG)
+                    기본 품목(헌옷+신발+가방)을 1kg 이상 입력해주세요
+                  </div>
+                )}
+
+                {/* 최대값 도달 안내 */}
+                {isMaxReached && (
+                  <div className="max-reached-notice">
+                    <span className="notice-icon">📞</span>
+                    대량 수거는 010-8186-7982로 연락주세요
                   </div>
                 )}
               </div>
@@ -892,7 +1211,8 @@ function App() {
                     type="date"
                     className="form-input"
                     value={preferredDate}
-                    onChange={(e) => setPreferredDate(e.target.value)}
+                    onChange={handleDateChange}
+                    onKeyDown={(e) => e.preventDefault()}
                   />
                   <select
                     className="form-input"
